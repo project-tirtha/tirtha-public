@@ -1,3 +1,5 @@
+# NOTE: Rename to local_settings.py, and...
+# ...place this file in ./tirtha-public/tirtha_bk/tirtha_bk/
 """
 Fields marked CHANGEME: need to be changed before deployment
 
@@ -36,7 +38,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROD_DIR = "<your_prod_dir>"  # Short term storage for current runs # CHANGEME:
 LOG_DIR = f"{PROD_DIR}logs"
 NFS_DIR = "<your_nfs_dir>"  # Long term storage for old runs # CHANGEME: Does not need to use NFS
-ARCHIVE_ROOT = f"{NFS_DIR}archives"
+ARCHIVE_ROOT = f"{NFS_DIR}"
 
 # Static files
 STATICFILES_DIRS = [
