@@ -1,3 +1,5 @@
+# NOTE: Rename to local_settings.py, and...
+# ...place this file in ./tirtha-public/tirtha_bk/tirtha_bk/
 """
 Fields marked CHANGEME: need to be changed before deployment
 
@@ -36,7 +38,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROD_DIR = "<your_prod_dir>"  # Short term storage for current runs # CHANGEME:
 LOG_DIR = f"{PROD_DIR}logs"
 NFS_DIR = "<your_nfs_dir>"  # Long term storage for old runs # CHANGEME: Does not need to use NFS
-ARCHIVE_ROOT = f"{NFS_DIR}archives"
+ARCHIVE_ROOT = f"{NFS_DIR}"
 
 # Static files
 STATICFILES_DIRS = [
@@ -51,7 +53,9 @@ MEDIA_ROOT = f"{PROD_DIR}media"
 # STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default attributes used to create default mesh & contributor
-DEFAULT_MESH_NAME = "<your_default_mesh_name>"  # Default mesh name to use for new runs | Will be shown on homepage # CHANGEME:
+# NOTE: You will need to create the default mesh & contributor manually before running the server for the first time.
+# TODO: FIXME: upload a default glb file + extra info and point to that in the repo. Maybe set default mesh as hidden and completed.
+DEFAULT_MESH_NAME = "<your_default_mesh_name>"  # Default mesh name to use while setting up | Will be shown on homepage # CHANGEME:
 DEFAULT_MESH_ID = "<your_default_mesh_id>"  # CHANGEME: NOTE: Must be a ShortUUID string of length 16. You can use https://shortunique.id/ to generate one.
 ADMIN_NAME = "<your_admin_name>"  # CHANGEME:
 ADMIN_MAIL = "<your_admin_mail>"  # CHANGEME:
@@ -116,3 +120,9 @@ BASE_URL = "<your_base_url>"  # CHANGEME: NOTE: No trailing '/' | e.g., https://
 ARK_NAAN = int("<your_ark_naan>")  # CHANGEME: Integer
 ARK_SHOULDER = "<your_ark_shoulder>"  # CHANGEME:
 FALLBACK_ARK_RESOLVER = "https://n2t.net"
+
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = (
+    10485760  # CHANGEME: 10 MiB (each file max size - post compression)
+)
+DATA_UPLOAD_MAX_NUMBER_FILES = 100  # CHANGEME: Max number of files per upload
