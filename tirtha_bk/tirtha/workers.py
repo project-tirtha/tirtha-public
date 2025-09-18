@@ -661,7 +661,6 @@ class GSOps(BaseOps):
 
         """
         alpha_cull_thresh = settings.ALPHA_CULL_THRESH
-        cull_post_dens = settings.CULL_POST_DENS
 
         log_path = self.log_path / "splatfacto.log"
         sf_train_log_path = self.log_path / "splatfacto_train.log"
@@ -682,14 +681,14 @@ class GSOps(BaseOps):
 
         # Create GS
         self.logger.info("Creating GS using Splatfacto...")
-        # NOTE: See https://docs.nerf.studio/nerfology/methods/splat.html#quality-and-regularization
         reg_opts = (
+            # Slightly faster, but more memory intensive
+            " --pipeline.datamanager.images-on-gpu True"
+            # Higher degree for better quality
+            + " --pipeline.model.sh-degree 3"
             # Threshold to delete translucent gaussians - lower values remove more (usually better quality)
-            " --pipeline.model.cull_alpha_thresh="
+            + " --pipeline.model.cull_alpha_thresh="
             + str(alpha_cull_thresh)
-            # Disable culling after 15K steps - # NOTE: Only for splatfacto-w(-light)
-            + " --pipeline.model.continue_cull_post_densification="
-            + str(cull_post_dens)
             # Less spiky Gaussians
             + " --pipeline.model.use_scale_regularization True"
         )

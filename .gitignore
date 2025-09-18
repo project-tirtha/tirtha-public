@@ -19,6 +19,7 @@ Meshroom-2021.1.0/
 Meshroom-2023.1.0/
 
 # Files
+*.db
 db*
 db.sqlite3
 local_settings.py
@@ -37,3 +38,4 @@ todo.md
 *.log
 cert/
 artifacts/
+tests/
