@@ -150,7 +150,6 @@ CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
 COLMAP_PATH = "colmap"  # CHANGEME:
 GS_MAX_ITER = 20_000
 ALPHA_CULL_THRESH = 0.005  # Threshold to delete translucent gaussians - lower values remove more (usually better quality)
-CULL_POST_DENS = False  # Disable culling after 15K steps
 
 # MR
 # NOTE: Defaulting to Meshroom 2021 for now. 2023 will require further changes
