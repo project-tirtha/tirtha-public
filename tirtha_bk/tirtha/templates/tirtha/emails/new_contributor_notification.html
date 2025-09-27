@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>New Contributor Sign-up - Tirtha</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .content { background-color: #ffffff; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .contributor-info { background-color: #e9ecef; padding: 15px; margin: 15px 0; border-radius: 3px; }
+        .action-button { display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
+        .action-button:hover { background-color: #0056b3; }
+        .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 0.9em; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🔔 New Contributor Sign-up</h2>
+            <p>Tirtha System Notification</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello Admin,</p>
+            
+            <p>A new contributor has signed up for the Tirtha platform and requires account activation.</p>
+            
+            <div class="contributor-info">
+                <h3>Contributor Details:</h3>
+                <p><strong>Name:</strong> {{ contributor.name|default:"Not provided" }}</p>
+                <p><strong>Email:</strong> {{ contributor.email }}</p>
+                <p><strong>Registration Time:</strong> {{ contributor.created_at|date:"Y-m-d H:i:s T" }}</p>
+                <p><strong>Contributor ID:</strong> {{ contributor.ID }}</p>
+            </div>
+            
+            <p>Please review and activate this contributor account through the admin panel:</p>
+            
+            <a href="{{ admin_url }}" class="action-button">Activate Contributor</a>
+            
+            <p>Alternatively, you can access the admin panel directly at: <a href="{{ base_admin_url }}">{{ base_admin_url }}</a></p>
+            
+            <p><strong>Note:</strong> The contributor will not be able to upload images until their account is activated.</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from the Tirtha system.</p>
+            <p>Do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

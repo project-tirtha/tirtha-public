@@ -1,9 +1,11 @@
 import shutil
+import logging
 from pathlib import Path
 
 from django.conf import settings
 from django.db.models.signals import post_delete, post_migrate, post_save, pre_save
 from django.dispatch import receiver
+from django.template.loader import render_to_string
 
 # Local imports
 from .models import Contribution, Contributor, Image, Mesh, Run
@@ -15,6 +17,9 @@ DEFAULT_MESH_NAME = settings.DEFAULT_MESH_NAME
 DEFAULT_MESH_ID = settings.DEFAULT_MESH_ID
 ADMIN_NAME = settings.ADMIN_NAME
 ADMIN_MAIL = settings.ADMIN_MAIL
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_migrate)
@@ -48,7 +53,7 @@ def post_migrate_create_defaults(sender, **kwargs):
         shutil.copy2(src, dest)
 
         # Copy default mesh thumbnail and preview images from STATIC to MEDIA
-        source /= f"to_media"
+        source /= "to_media"
         srcs = [source / f"{mesh_ID}_thumb.jpg", source / f"{mesh_ID}_prev.jpg"]
         dest = MEDIA / f"models/{mesh_ID}/"
         dest.mkdir(parents=True, exist_ok=True)
@@ -71,6 +76,89 @@ def post_migrate_create_defaults(sender, **kwargs):
 
 # Connect the signal
 post_migrate.connect(post_migrate_create_defaults)
+
+
+@receiver(post_save, sender=Contributor)
+def notify_admin_new_contributor(sender, instance, created, **kwargs):
+    """
+    Sends an email notification to admins when a new contributor signs up via OAuth.
+
+    Only sends notifications for:
+    - Newly created contributors (created=True)
+    - Inactive contributors (active=False)
+    - Skip if admin email (assume admin-created)
+
+    """
+    if created and not instance.active and instance.email != settings.ADMIN_MAIL:
+        logger.info(
+            f"New contributor created: {instance.email} - sending admin notification"
+        )
+
+        # Prepare email content
+        subject = f"New Contributor Sign-up: {instance.name or instance.email}"
+
+        # Template context for rendering emails
+        context = {
+            "contributor": instance,
+            "admin_url": f"{settings.BASE_URL}/admin/tirtha/contributor/{instance.ID}/change/",
+            "base_admin_url": f"{settings.BASE_URL}/admin/",
+        }
+
+        # Render email templates
+        try:
+            html_message = render_to_string(
+                "tirtha/emails/new_contributor_notification.html", context
+            )
+            text_message = render_to_string(
+                "tirtha/emails/new_contributor_notification.txt", context
+            )
+        except Exception as e:
+            logger.error(f"Failed to render email templates: {e}")
+            # Fallback to plain text message
+            text_message = f"""
+A new contributor has signed up for Tirtha and requires activation:
+
+Name: {instance.name or "Not provided"}
+Email: {instance.email}
+Registration Time: {instance.created_at.strftime("%Y-%m-%d %H:%M:%S %Z")}
+
+Please log in to the admin panel to activate this contributor:
+{settings.BASE_URL}/admin/tirtha/contributor/{instance.ID}/change/
+
+Best regards,
+Tirtha System
+            """
+            html_message = None
+
+        # Get admin emails from settings
+        admin_emails = [email for name, email in getattr(settings, "ADMINS", [])]
+        if not admin_emails:
+            admin_emails = [settings.ADMIN_MAIL]  # Fallback to ADMIN_MAIL setting
+
+        try:
+            # Import here to avoid circular imports
+            from django.core.mail import EmailMultiAlternatives
+
+            # Create email message
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_message,
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", settings.ADMIN_MAIL),
+                to=admin_emails,
+            )
+
+            # Add HTML version if available
+            if html_message:
+                email.attach_alternative(html_message, "text/html")
+
+            email.send(fail_silently=False)
+            logger.info(
+                f"Admin notification sent successfully for new contributor: {instance.email}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to send admin notification for new contributor {instance.email}: {e}"
+            )
 
 
 @receiver(post_save, sender=Mesh)

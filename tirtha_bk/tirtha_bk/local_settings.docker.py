@@ -3,6 +3,7 @@
 Fields marked CHANGEME: need to be changed before deployment
 
 """
+
 import os
 from pathlib import Path
 from django.core.management.utils import get_random_secret_key
@@ -177,3 +178,23 @@ ARK_SHOULDER = os.getenv(
     "ARK_SHOULDER", "/a"
 )  # CHANGEME: | CHECK: https://arks.org/about/testing-arks/
 FALLBACK_ARK_RESOLVER = "https://n2t.net"
+
+## Email settings
+# SMTP configuration for sending emails (e.g., new contributor notifications)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")  # CHANGEME: Use your SMTP server
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")  # CHANGEME: Your email address
+EMAIL_HOST_PASSWORD = os.getenv(
+    "EMAIL_HOST_PASSWORD", ""
+)  # CHANGEME: Your email password or app password
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL", ADMIN_MAIL
+)  # CHANGEME: Default sender email
+ADMINS = [
+    (ADMIN_NAME, ADMIN_MAIL),  # CHANGEME: Admin email addresses
+]
+SERVER_EMAIL = os.getenv(
+    "SERVER_EMAIL", ADMIN_MAIL
+)  # CHANGEME: For server error emails

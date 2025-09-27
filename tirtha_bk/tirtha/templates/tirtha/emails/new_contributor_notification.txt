@@ -1,0 +1,26 @@
+NEW CONTRIBUTOR SIGN-UP - TIRTHA SYSTEM NOTIFICATION
+
+Hello Admin,
+
+A new contributor has signed up for the Tirtha platform and requires account activation.
+
+Contributor Details:
+===================
+Name: {{ contributor.name|default:"Not provided" }}
+Email: {{ contributor.email }}
+Registration Time: {{ contributor.created_at|date:"Y-m-d H:i:s T" }}
+Contributor ID: {{ contributor.ID }}
+
+Action Required:
+================
+Please review and activate this contributor account through the admin panel:
+{{ admin_url }}
+
+Alternatively, you can access the admin panel directly at:
+{{ base_admin_url }}
+
+Note: The contributor will not be able to upload images until their account is activated.
+
+---
+This is an automated notification from the Tirtha system.
+Do not reply to this email.
