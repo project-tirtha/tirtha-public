@@ -197,3 +197,9 @@ ADMINS = [
 SERVER_EMAIL = os.getenv(
     "SERVER_EMAIL", ADMIN_MAIL
 )  # CHANGEME: For server error emails
+
+# List of contributor email addresses to ignore when sending new contribution notifications
+CONTRIB_IGNORE_LIST = [
+    ADMIN_MAIL,  # Admin email to ignore
+    # Add other emails here as needed
+]

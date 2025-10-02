@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 from django.conf import settings
+from django.db import models
 from django.db.models.signals import post_delete, post_migrate, post_save, pre_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -158,6 +159,114 @@ Tirtha System
         except Exception as e:
             logger.error(
                 f"Failed to send admin notification for new contributor {instance.email}: {e}"
+            )
+
+
+@receiver(post_save, sender=Contribution)
+def notify_admin_new_contribution(sender, instance, created, **kwargs):
+    """
+    Sends an email notification to admins when a new contribution is added.
+
+    Only sends notifications for:
+    - Newly created contributions (created=True)
+    - Contributors not in CONTRIB_IGNORE_LIST
+
+    """
+    if created:
+        contributor_email = instance.contributor.email
+        ignore_list = getattr(settings, "CONTRIB_IGNORE_LIST", [])
+
+        if contributor_email in ignore_list:
+            logger.info(
+                f"Skipping contribution notification for {contributor_email} (in ignore list)"
+            )
+            return
+
+        logger.info(
+            f"New contribution created: {instance.ID} by {contributor_email} - sending admin notification"
+        )
+
+        # Get image count for this contribution
+        image_count = instance.images.count()
+
+        # Get total stats for the mesh
+        total_images = (
+            instance.mesh.contributions.aggregate(total=models.Count("images"))["total"]
+            or 0
+        )
+        total_contributions = instance.mesh.contributions.count()
+
+        # Prepare email content
+        subject = f"New Contribution: {instance.mesh.name} - {image_count} images"
+
+        # Template context for rendering emails
+        context = {
+            "contribution": instance,
+            "image_count": image_count,
+            "total_images": total_images,
+            "total_contributions": total_contributions,
+            "contribution_admin_url": f"{settings.BASE_URL}/admin/tirtha/contribution/{instance.ID}/change/",
+            "mesh_admin_url": f"{settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/change/",
+            "base_admin_url": f"{settings.BASE_URL}/admin/",
+        }
+
+        # Render email templates
+        try:
+            html_message = render_to_string(
+                "tirtha/emails/new_contribution_notification.html", context
+            )
+            text_message = render_to_string(
+                "tirtha/emails/new_contribution_notification.txt", context
+            )
+        except Exception as e:
+            logger.error(f"Failed to render contribution email templates: {e}")
+            # Fallback to plain text message
+            text_message = f"""
+A new contribution has been added to Tirtha:
+
+Contribution ID: {instance.ID}
+CH Site: {instance.mesh.name} ({instance.mesh.ID})
+Location: {instance.mesh.district}, {instance.mesh.state}, {instance.mesh.country}
+Contributor: {instance.contributor.name or "Unknown"} ({contributor_email})
+Contribution Time: {instance.contributed_at.strftime("%Y-%m-%d %H:%M:%S %Z")}
+Number of Images: {image_count}
+
+View contribution: {settings.BASE_URL}/admin/tirtha/contribution/{instance.ID}/change/
+View CH Site: {settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/change/
+
+Best regards,
+Tirtha System
+            """
+            html_message = None
+
+        # Get admin emails from settings
+        admin_emails = [email for name, email in getattr(settings, "ADMINS", [])]
+        if not admin_emails:
+            admin_emails = [settings.ADMIN_MAIL]  # Fallback to ADMIN_MAIL setting
+
+        try:
+            # Import here to avoid circular imports
+            from django.core.mail import EmailMultiAlternatives
+
+            # Create email message
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_message,
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", settings.ADMIN_MAIL),
+                to=admin_emails,
+            )
+
+            # Add HTML version if available
+            if html_message:
+                email.attach_alternative(html_message, "text/html")
+
+            email.send(fail_silently=False)
+            logger.info(
+                f"Admin notification sent successfully for new contribution: {instance.ID}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to send admin notification for new contribution {instance.ID}: {e}"
             )
 
 

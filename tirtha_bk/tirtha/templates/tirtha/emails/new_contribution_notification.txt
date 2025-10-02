@@ -1,0 +1,30 @@
+NEW CONTRIBUTION ADDED - TIRTHA SYSTEM NOTIFICATION
+
+Hello Admin,
+
+A new contribution has been added to the Tirtha platform.
+
+Contribution Details:
+====================
+Contribution ID: {{ contribution.ID }}
+Mesh: {{ contribution.mesh.name }} ({{ contribution.mesh.ID }})
+Location: {{ contribution.mesh.district }}, {{ contribution.mesh.state }}, {{ contribution.mesh.country }}
+Contributor: {{ contribution.contributor.name|default:"Unknown" }} ({{ contribution.contributor.email }})
+Contribution Time: {{ contribution.contributed_at|date:"Y-m-d H:i:s T" }}
+Number of Images: {{ image_count }}
+{% if total_images %}Total Images for Mesh: {{ total_images }}{% endif %}
+{% if total_contributions %}Total Contributions for Mesh: {{ total_contributions }}{% endif %}
+
+Processing Status: {% if contribution.processed %}Processed{% else %}Processing in progress{% endif %}
+
+Action Links:
+=============
+View Contribution: {{ contribution_admin_url }}
+View Mesh: {{ mesh_admin_url }}
+
+Alternatively, you can access the admin panel directly at:
+{{ base_admin_url }}
+
+---
+This is an automated notification from the Tirtha system.
+Do not reply to this email.

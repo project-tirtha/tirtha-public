@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>New Contribution Added - Tirtha</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .content { background-color: #ffffff; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .contribution-info { background-color: #e9ecef; padding: 15px; margin: 15px 0; border-radius: 3px; }
+        .action-button { display: inline-block; background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
+        .action-button:hover { background-color: #1e7e34; }
+        .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 0.9em; color: #6c757d; }
+        .stats { display: inline-block; background-color: #fff3cd; padding: 10px; margin: 5px; border-radius: 3px; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>📸 New Contribution Added</h2>
+            <p>Tirtha System Notification</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello Admin,</p>
+            
+            <p>A new contribution has been added to the Tirtha platform.</p>
+            
+            <div class="contribution-info">
+                <h3>Contribution Details:</h3>
+                <p><strong>Contribution ID:</strong> {{ contribution.ID }}</p>
+                <p><strong>Mesh:</strong> {{ contribution.mesh.name }} ({{ contribution.mesh.ID }})</p>
+                <p><strong>Location:</strong> {{ contribution.mesh.district }}, {{ contribution.mesh.state }}, {{ contribution.mesh.country }}</p>
+                <p><strong>Contributor:</strong> {{ contribution.contributor.name|default:"Unknown" }} ({{ contribution.contributor.email }})</p>
+                <p><strong>Contribution Time:</strong> {{ contribution.contributed_at|date:"Y-m-d H:i:s T" }}</p>
+                <p><strong>Number of Images:</strong> {{ image_count }}</p>
+                {% if total_images %}<p><strong>Total Images for Mesh:</strong> {{ total_images }}</p>{% endif %}
+                {% if total_contributions %}<p><strong>Total Contributions for Mesh:</strong> {{ total_contributions }}</p>{% endif %}
+            </div>
+            
+            <div class="stats">
+                <strong>Processing Status:</strong> 
+                {% if contribution.processed %}
+                    ✅ Processed
+                {% else %}
+                    ⏳ Processing in progress
+                {% endif %}
+            </div>
+            
+            <p>You can view and manage this contribution through the admin panel:</p>
+            
+            <a href="{{ contribution_admin_url }}" class="action-button">View Contribution</a>
+            <a href="{{ mesh_admin_url }}" class="action-button">View Mesh</a>
+            
+            <p>Alternatively, you can access the admin panel directly at: <a href="{{ base_admin_url }}">{{ base_admin_url }}</a></p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from the Tirtha system.</p>
+            <p>Do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
