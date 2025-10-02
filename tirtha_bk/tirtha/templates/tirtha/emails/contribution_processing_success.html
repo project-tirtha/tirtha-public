@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Your Contribution is Ready! - Tirtha Platform</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #c3e6cb; }
+        .content { background-color: #ffffff; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .contribution-info { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 3px; border-left: 4px solid #28a745; }
+        .action-button { display: inline-block; background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 5px; font-weight: bold; }
+        .action-button:hover { background-color: #0056b3; color: white; text-decoration: none; }
+        .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 0.9em; color: #6c757d; }
+        .success-badge { background-color: #28a745; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.9em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>✅ Your Contribution is Ready!</h2>
+            <p><span class="success-badge">PROCESSING COMPLETE</span></p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ contributor_name }},</p>
+            
+            Your contribution to the Tirtha platform has been successfully processed and is now available for viewing.</p>
+            
+            <div class="contribution-info">
+                <h3>Contribution Details:</h3>
+                <p><strong>Heritage Site:</strong> {{ mesh_name }}</p>
+                <p><strong>Processing Type:</strong> {% if operation_type == "aV" %}Photogrammetry{% elif operation_type == "GS" %}Gaussian Splatting{% else %}{{ operation_type }}{% endif %}</p>
+                {% if processing_duration %}<p><strong>Processing Time:</strong> {{ processing_duration }}</p>{% endif %}
+            </div>
+            
+            {% if ark_id %}
+            <div style="background-color: #e7f3ff; padding: 15px; margin: 15px 0; border-radius: 3px; border-left: 4px solid #007bff;">
+                <h3>🏛️ Persistent Archive Information</h3>
+                <p><strong>ARK ID:</strong> {{ ark_id }}</p>
+                <p><strong>ARK URL:</strong> <a href="{{ ark_url }}">{{ ark_url }}</a></p>
+                <p><em>This ARK (Archival Resource Key) provides a <strong>persistent URL</strong> to this specific snapshot of the heritage site's 3D model. This URL can be used for academic citations or long-term reference.</em></p>
+                <p><a href="{{ arks_info_url }}" target="_blank">Learn more about ARKs →</a></p>
+            </div>
+            {% endif %}
+            
+            <p>Your images have been successfully processed and integrated into our 3D reconstruction of this cultural heritage site. This contributes to the digital preservation and accessibility of our shared cultural heritage.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="{% if ark_url %}{{ ark_url }}{% else %}{{ mesh_url }}{% endif %}" class="action-button">🏛️ View Your Contribution</a>
+            </div>
+            
+            <h4>What happens next?</h4>
+            <ul>
+                <li>Your processed contribution is now live on the Tirtha platform</li>
+                <li>Visitors can explore the enhanced 3D model of {{ mesh_name }}</li>
+                <li>Your contribution helps preserve cultural heritage for future generations</li>
+                <li>You can continue to contribute more images to this or other heritage sites</li>
+            </ul>
+            
+            <p><strong>Thank you for your valuable contribution to cultural heritage preservation!</strong></p>
+            
+            <p>If you have any questions or would like to contribute to more heritage sites, feel free to visit our platform or contact us.</p>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ base_url }}" class="action-button" style="background-color: #28a745;">Explore More Sites</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from the Tirtha platform.</p>
+            <p>Tirtha - Digital Heritage Preservation Platform<br>
+            <a href="{{ base_url }}">{{ base_url }}</a></p>
+            <p><em>Preserving cultural heritage through community collaboration.</em></p>
+        </div>
+    </div>
+</body>
+</html>

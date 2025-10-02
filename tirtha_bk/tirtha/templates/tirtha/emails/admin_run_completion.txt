@@ -1,0 +1,45 @@
+CONTRIBUTION RUN COMPLETED SUCCESSFULLY - TIRTHA ADMIN NOTIFICATION
+
+Hello Admin,
+
+A contribution run has been completed successfully on the Tirtha platform.
+
+Run Details:
+============
+Heritage Site: {{ mesh_name }} ({{ mesh_id }})
+Contributor: {{ contributor_name }} ({{ contributor_email }})
+Processing Type: {% if operation_type == "aV" %}Photogrammetry{% elif operation_type == "GS" %}Gaussian Splatting{% else %}{{ operation_type }}{% endif %}
+Contribution ID: {{ contribution_id }}
+{% if run_id %}Run ID: {{ run_id }}{% endif %}
+{% if processing_duration %}Processing Duration: {{ processing_duration }}{% endif %}
+
+{% if ark_id %}ARK Details:
+============
+ARK ID: {{ ark_id }}
+ARK URL: {{ ark_url }}
+
+The ARK provides a persistent identifier for this specific run's output that can be 
+used for academic citations or long-term reference.
+Learn more about ARKs: {{ arks_info_url }}
+{% endif %}
+
+Status Summary:
+===============
+✅ Processing completed successfully
+✅ Contributor notification sent  
+✅ 3D model is now live on the platform
+{% if ark_id %}✅ ARK identifier generated for persistent access{% endif %}
+
+Admin Actions:
+==============
+View Contribution: {{ contribution_admin_url }}
+View Heritage Site: {{ mesh_admin_url }}
+Admin Panel: {{ base_admin_url }}
+
+The processing has completed successfully and the contributor has been automatically 
+notified of the completion.
+
+---
+This is an automated notification from the Tirtha platform.
+Tirtha - Digital Heritage Preservation Platform
+{{ base_url }}

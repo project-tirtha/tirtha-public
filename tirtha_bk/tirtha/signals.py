@@ -224,15 +224,14 @@ def notify_admin_new_contribution(sender, instance, created, **kwargs):
             text_message = f"""
 A new contribution has been added to Tirtha:
 
-Contribution ID: {instance.ID}
-CH Site: {instance.mesh.name} ({instance.mesh.ID})
+Heritage Site: {instance.mesh.name} ({instance.mesh.ID})
 Location: {instance.mesh.district}, {instance.mesh.state}, {instance.mesh.country}
 Contributor: {instance.contributor.name or "Unknown"} ({contributor_email})
 Contribution Time: {instance.contributed_at.strftime("%Y-%m-%d %H:%M:%S %Z")}
 Number of Images: {image_count}
 
 View contribution: {settings.BASE_URL}/admin/tirtha/contribution/{instance.ID}/change/
-View CH Site: {settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/change/
+View Heritage Site: {settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/change/
 
 Best regards,
 Tirtha System

@@ -7,7 +7,7 @@ A contribution processing task has failed in the Tirtha platform and requires im
 Failure Details:
 ================
 Contribution ID: {{ contribution_id }}
-CH Site: {{ mesh_name }} ({{ mesh_id }})
+Heritage Site: {{ mesh_name }} ({{ mesh_id }})
 Contributor: {{ contributor_email }}
 Processing Step: {{ processing_step }}
 Operation Type: {{ operation_type|default:"Unknown" }}
@@ -24,7 +24,7 @@ This failure indicates a problem in the processing pipeline that may require man
 Action Links:
 =============
 View Contribution: {{ contribution_admin_url }}
-View CH Site: {{ mesh_admin_url }}
+View Heritage Site: {{ mesh_admin_url }}
 
 Alternatively, you can access the admin panel directly at:
 {{ base_admin_url }}
