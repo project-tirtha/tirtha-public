@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Run Completed Successfully - Tirtha Admin Notification</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #c3e6cb; }
+        .content { background-color: #ffffff; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .run-info { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 3px; border-left: 4px solid #28a745; }
+        .ark-info { background-color: #e7f3ff; padding: 15px; margin: 15px 0; border-radius: 3px; border-left: 4px solid #007bff; }
+        .action-button { display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 5px; font-weight: bold; }
+        .action-button:hover { background-color: #0056b3; color: white; text-decoration: none; }
+        .success-button { background-color: #28a745; }
+        .success-button:hover { background-color: #1e7e34; }
+        .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 0.9em; color: #6c757d; }
+        .success-badge { background-color: #28a745; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.9em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>✅ Contribution Run Completed Successfully</h2>
+            <p><span class="success-badge">PROCESSING COMPLETE</span></p>
+        </div>
+        
+        <div class="content">
+            <p>Hello Admin,</p>
+            
+            <p><strong>A contribution run has been completed successfully on the Tirtha platform.</strong></p>
+            
+            <div class="run-info">
+                <h3>Run Details:</h3>
+                <p><strong>Heritage Site:</strong> {{ mesh_name }} ({{ mesh_id }})</p>
+                <p><strong>Contributor:</strong> {{ contributor_name }} ({{ contributor_email }})</p>
+                <p><strong>Processing Type:</strong> {% if operation_type == "aV" %}Photogrammetry{% elif operation_type == "GS" %}Gaussian Splatting{% else %}{{ operation_type }}{% endif %}</p>
+                <p><strong>Contribution ID:</strong> {{ contribution_id }}</p>
+                {% if run_id %}<p><strong>Run ID:</strong> {{ run_id }}</p>{% endif %}
+                {% if processing_duration %}<p><strong>Processing Duration:</strong> {{ processing_duration }}</p>{% endif %}
+            </div>
+            
+            {% if ark_id %}
+            <div class="ark-info">
+                <h3>🏛️ ARK Details:</h3>
+                <p><strong>ARK ID:</strong> {{ ark_id }}</p>
+                <p><strong>ARK URL:</strong> <a href="{{ ark_url }}">{{ ark_url }}</a></p>
+                <p><em>The ARK provides a persistent identifier for this specific run's output that can be used for academic citations or long-term reference.</em></p>
+                <p><a href="{{ arks_info_url }}" target="_blank">Learn more about ARKs →</a></p>
+            </div>
+            {% endif %}
+            
+            <h4>Status Summary:</h4>
+            <ul>
+                <li>✅ Processing completed successfully</li>
+                <li>✅ Contributor notification sent</li>
+                <li>✅ 3D model is now live on the platform</li>
+                {% if ark_id %}<li>✅ ARK identifier generated for persistent access</li>{% endif %}
+            </ul>
+            
+            <h4>Admin Actions:</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="{{ contribution_admin_url }}" class="action-button">View Contribution</a>
+                <a href="{{ mesh_admin_url }}" class="action-button">View Heritage Site</a>
+                <a href="{{ base_admin_url }}" class="action-button success-button">Admin Panel</a>
+            </div>
+            
+            <p>The processing has completed successfully and the contributor has been automatically notified of the completion.</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from the Tirtha platform.</p>
+            <p>Tirtha - Digital Heritage Preservation Platform<br>
+            <a href="{{ base_url }}">{{ base_url }}</a></p>
+        </div>
+    </div>
+</body>
+</html>

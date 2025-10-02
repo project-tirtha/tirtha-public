@@ -36,7 +36,7 @@
             <div class="failure-info">
                 <h3>Failure Details:</h3>
                 <p><strong>Contribution ID:</strong> {{ contribution_id }}</p>
-                <p><strong>CH Site:</strong> {{ mesh_name }} ({{ mesh_id }})</p>
+                <p><strong>Heritage Site:</strong> {{ mesh_name }} ({{ mesh_id }})</p>
                 <p><strong>Contributor:</strong> {{ contributor_email }}</p>
                 <p><strong>Processing Step:</strong> {{ processing_step }}</p>
                 <p><strong>Operation Type:</strong> {{ operation_type|default:"Unknown" }}</p>
@@ -55,7 +55,7 @@
             
             <div style="margin: 20px 0;">
                 <a href="{{ contribution_admin_url }}" class="action-button">View Contribution</a>
-                <a href="{{ mesh_admin_url }}" class="action-button secondary-button">View CH Site</a>
+                <a href="{{ mesh_admin_url }}" class="action-button secondary-button">View Heritage Site</a>
             </div>
             
             <div class="footer">

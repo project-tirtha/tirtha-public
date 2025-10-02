@@ -203,3 +203,6 @@ CONTRIB_IGNORE_LIST = [
     ADMIN_MAIL,  # Admin email to ignore
     # Add other emails here as needed
 ]
+
+# Toggle for sending success emails to contributors when their contribution processing finishes
+MAIL_CONTRIB_TOGGLE = os.getenv("MAIL_CONTRIB_TOGGLE", "False").lower() == "true"

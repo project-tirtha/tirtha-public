@@ -912,10 +912,79 @@ def ops_runner(contrib_id: str, kind: str) -> None:
     try:
         op = OP(meshID=meshID, contrib_id=contrib_id)
         cons.print(f"Check {op.log_path} for more details.")
+
+        # Store start time for calculating processing duration
+        start_time = datetime.now()
+
         op._run_all()
+
+        # Calculate processing duration
+        end_time = datetime.now()
+        processing_duration = str(end_time - start_time).split(".")[
+            0
+        ]  # Remove microseconds
+
         cons.print(
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Finished {op_name} on {meshVID} <=> {meshID}."
         )
+
+        # Send success email notification to contributor and admins
+        try:
+            from .email_utils import (
+                send_contribution_processing_success_email,
+                send_admin_run_completion_email,
+            )
+
+            contributor_name = (
+                contrib.contributor.name or contrib.contributor.email.split("@")[0]
+            )
+
+            # Get ARK information if available
+            ark_url = None
+            ark_id = None
+            if hasattr(op, "run") and op.run.ark:
+                ark_url = f"{settings.BASE_URL}/ark:/{op.run.ark.ark}"
+                ark_id = op.run.ark.ark
+
+            # Send notification to contributor
+            send_contribution_processing_success_email(
+                contribution_id=contrib_id,
+                mesh_id=meshID,
+                mesh_name=contrib.mesh.name,
+                contributor_email=contrib.contributor.email,
+                contributor_name=contributor_name,
+                operation_type=kind,
+                run_id=str(op.runID) if hasattr(op, "runID") else None,
+                mesh_url=f"{settings.BASE_URL}/mesh/{meshID}/",
+                processing_duration=processing_duration,
+                ark_url=ark_url,
+                ark_id=ark_id,
+            )
+            cons.print(
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Success notification sent to {contrib.contributor.email}."
+            )
+
+            # Send notification to admins
+            send_admin_run_completion_email(
+                contribution_id=contrib_id,
+                mesh_id=meshID,
+                mesh_name=contrib.mesh.name,
+                contributor_email=contrib.contributor.email,
+                contributor_name=contributor_name,
+                operation_type=kind,
+                run_id=str(op.runID) if hasattr(op, "runID") else None,
+                processing_duration=processing_duration,
+                ark_url=ark_url,
+                ark_id=ark_id,
+            )
+            cons.print(
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Admin notification sent for run completion."
+            )
+
+        except Exception as email_error:
+            cons.print(f"Warning: Failed to send notification emails: {email_error}")
+            # NOTE: Don't raise the exception - email failure shouldn't break the processing
+
     except Exception as e:
         cons.print(
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: ERROR encountered in {op_name} for {meshVID} <=> {meshID}!"
@@ -942,7 +1011,7 @@ def ops_runner(contrib_id: str, kind: str) -> None:
                 run_id=str(op.runID)
                 if "op" in locals() and hasattr(op, "runID")
                 else None,
-                operation_type=op_name,
+                operation_type=kind,
             )
         except Exception as email_error:
             cons.print(f"Failed to send failure notification email: {email_error}")

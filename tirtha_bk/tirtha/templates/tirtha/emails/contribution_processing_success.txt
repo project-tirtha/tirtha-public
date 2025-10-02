@@ -1,0 +1,50 @@
+YOUR CONTRIBUTION IS READY! - TIRTHA PLATFORM
+
+Dear {{ contributor_name }},
+
+Your contribution to the Tirtha platform has been successfully processed and is now available for viewing.
+
+Contribution Details:
+=====================
+Heritage Site: {{ mesh_name }}
+Processing Type: {% if operation_type == "aV" %}Photogrammetry{% elif operation_type == "GS" %}Gaussian Splatting{% else %}{{ operation_type }}{% endif %}
+{% if processing_duration %}Processing Time: {{ processing_duration }}{% endif %}
+
+{% if ark_id %}Persistent Archive Information:
+=================================
+ARK ID: {{ ark_id }}
+ARK URL: {{ ark_url }}
+
+This ARK (Archival Resource Key) provides a persistent URL to this specific snapshot 
+of the heritage site's 3D model. This URL can be used for academic citations or long-term reference.
+
+Learn more about ARKs: {{ arks_info_url }}
+{% endif %}
+
+Your images have been successfully processed and integrated into our 3D reconstruction of this cultural heritage site. This contributes to the digital preservation and accessibility of our shared cultural heritage.
+
+View Your Contribution:
+=======================
+{% if ark_url %}{{ ark_url }}{% else %}{{ mesh_url }}{% endif %}
+
+What happens next?
+==================
+- Your processed contribution is now live on the Tirtha platform
+- Visitors can explore the enhanced 3D model of {{ mesh_name }}
+- Your contribution helps preserve cultural heritage for future generations
+- You can continue to contribute more images to this or other heritage sites
+
+Thank you for your valuable contribution to cultural heritage preservation!
+
+If you have any questions or would like to contribute to more heritage sites, feel free to visit our platform or contact us.
+
+Explore More Heritage Sites:
+============================
+{{ base_url }}
+
+---
+This is an automated notification from the Tirtha platform.
+Tirtha - Digital Heritage Preservation Platform
+{{ base_url }}
+
+Preserving cultural heritage through community collaboration.
