@@ -16,7 +16,7 @@ SECRET_KEY = SECRET_KEY if SECRET_KEY else get_random_secret_key()
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")  # CHANGEME:
 
 # SECURITY WARNING: do not run with debug turned on in production!
-DEBUG = True  # NOTE: Set to False in production  # CHANGEME:
+DEBUG = False  # NOTE: Set to False in production  # CHANGEME:
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", os.getenv("HOST_IP", "127.0.0.1")]  # CHANGEME:
