@@ -96,7 +96,7 @@ def _authenticate_user(user_info):
     return f"Signed-in as {email}.", contrib
 
 
-def _get_mesh_context(mesh: Mesh, run: Run=None) -> Dict:
+def _get_mesh_context(mesh: Mesh, run: Run = None) -> Dict:
     """
     Helper to build mesh context for templates
 
@@ -144,7 +144,7 @@ def _get_mesh_context(mesh: Mesh, run: Run=None) -> Dict:
     return context
 
 
-def index(request, vid: str=None, runid: str=None):
+def index(request, vid: str = None, runid: str = None):
     """
     Main view for displaying meshes and runs
 
@@ -383,6 +383,23 @@ def upload(request):
     except Exception as e:
         logging.error(f"Failed to trigger image processing task: {e}")
         logging.error("Deleting contribution due to processing failure.")
+
+        # Send email notification about task trigger failure
+        try:
+            from .email_utils import send_image_processing_failure_email
+
+            send_image_processing_failure_email(
+                contribution_id=str(contribution.ID),
+                mesh_id=str(mesh.ID),
+                mesh_name=mesh.name,
+                contributor_email=contrib.email,
+                error_message=f"Failed to trigger image processing task: {str(e)}",
+            )
+        except Exception as email_error:
+            logging.error(
+                f"Failed to send task trigger failure notification: {email_error}"
+            )
+
         contribution.delete()
 
         return JsonResponse(
@@ -398,7 +415,7 @@ def upload(request):
 def search(request):
     """
     Search meshes by name, country, state, or district
-    
+
     """
     query = request.GET.get("query", "").strip()
 

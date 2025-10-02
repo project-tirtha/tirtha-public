@@ -1,0 +1,37 @@
+CONTRIBUTION PROCESSING FAILED - TIRTHA SYSTEM ALERT
+
+Hello Admin,
+
+A contribution processing task has failed in the Tirtha platform and requires immediate attention.
+
+Failure Details:
+================
+Contribution ID: {{ contribution_id }}
+CH Site: {{ mesh_name }} ({{ mesh_id }})
+Contributor: {{ contributor_email }}
+Processing Step: {{ processing_step }}
+Operation Type: {{ operation_type|default:"Unknown" }}
+{% if run_id %}Run ID: {{ run_id }}{% endif %}
+
+Error Information:
+==================
+{{ error_message }}
+
+{% if log_file_path %}Log File: {{ log_file_path }}{% endif %}
+
+This failure indicates a problem in the processing pipeline that may require manual intervention. Please investigate the issue as soon as possible.
+
+Action Links:
+=============
+View Contribution: {{ contribution_admin_url }}
+View CH Site: {{ mesh_admin_url }}
+
+Alternatively, you can access the admin panel directly at:
+{{ base_admin_url }}
+
+IMPORTANT: This is a critical system failure notification. 
+Please address this issue promptly to ensure proper platform operation.
+
+---
+This is an automated alert from the Tirtha system.
+Do not reply to this email.

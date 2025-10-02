@@ -38,7 +38,7 @@ ARK_SHOULDER = settings.ARK_SHOULDER
 
 
 class BaseOps:
-    def __init__(self, meshID: str, kind: str = "aV") -> None:
+    def __init__(self, meshID: str, kind: str = "aV", contrib_id: str = None) -> None:
         """
         Base class for all operations
 
@@ -48,12 +48,24 @@ class BaseOps:
             Mesh ID
         kind : str
             Kind of operation, one of ['aV', 'GS'], by default 'aV'
+        contrib_id : str, optional
+            Contribution ID that triggered this operation
 
         """
         self.meshID = meshID
         self.mesh = mesh = Mesh.objects.get(ID=meshID)
         self.meshVID = mesh.verbose_id
         self.meshStr = f"{self.meshVID} <=> {self.meshID}"  # Used in logging
+        self.contrib_id = contrib_id
+
+        # Get contribution object if contrib_id provided
+        self.contribution = None
+        if contrib_id:
+            try:
+                self.contribution = Contribution.objects.get(ID=contrib_id)
+            except Contribution.DoesNotExist:
+                # Log warning but continue - this is optional
+                pass
 
         # Create new Run
         self.kind = kind
@@ -176,6 +188,56 @@ class BaseOps:
         self.run.ended_at = timezone.now()
         self.run.save()
         self._update_run_status("Error")
+
+        # Send email notification to admin about the failure
+        try:
+            from .email_utils import send_reconstruction_failure_email
+
+            # Get contribution and contributor details - use exact contribution if available
+            contribution_id = "Unknown"
+            contributor_email = "Unknown"
+
+            if self.contribution:
+                # Use the exact contribution that triggered this operation
+                contribution_id = str(self.contribution.ID)
+                contributor_email = self.contribution.contributor.email
+            elif self.contrib_id:
+                # Fallback: use contrib_id string
+                contribution_id = str(self.contrib_id)
+                # Try to get contributor email
+                try:
+                    contrib = Contribution.objects.get(ID=self.contrib_id)
+                    contributor_email = contrib.contributor.email
+                except Contribution.DoesNotExist:
+                    pass
+            else:
+                # Fallback: use run or mesh contributions (old behavior)
+                if self.run.contributions.exists():
+                    latest_contribution = self.run.contributions.first()
+                    contribution_id = str(latest_contribution.ID)
+                    contributor_email = latest_contribution.contributor.email
+                elif self.run.mesh.contributions.exists():
+                    latest_contribution = self.run.mesh.contributions.first()
+                    contribution_id = str(latest_contribution.ID)
+                    contributor_email = latest_contribution.contributor.email
+
+            send_reconstruction_failure_email(
+                contribution_id=contribution_id,
+                mesh_id=str(self.mesh.ID),
+                mesh_name=self.mesh.name,
+                contributor_email=contributor_email,
+                processing_step=caller,
+                error_message=str(excep),
+                log_file_path=str(self.logger._log_file)
+                if hasattr(self.logger, "_log_file")
+                else None,
+                run_id=str(self.runID),
+                operation_type=self.kind + "Ops",
+            )
+        except Exception as email_error:
+            self.logger.error(
+                f"Failed to send failure notification email: {email_error}"
+            )
 
         raise excep
 
@@ -848,7 +910,7 @@ def ops_runner(contrib_id: str, kind: str) -> None:
     )
 
     try:
-        op = OP(meshID=meshID)
+        op = OP(meshID=meshID, contrib_id=contrib_id)
         cons.print(f"Check {op.log_path} for more details.")
         op._run_all()
         cons.print(
@@ -859,5 +921,31 @@ def ops_runner(contrib_id: str, kind: str) -> None:
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: ERROR encountered in {op_name} for {meshVID} <=> {meshID}!"
         )
         cons.print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {e}")
+
+        # Send additional email notification if _handle_error didn't cover it
+        # This covers cases where the error might occur outside of the BaseOps methods
+        try:
+            from .email_utils import send_reconstruction_failure_email
+
+            contributor_email = contrib.contributor.email
+
+            send_reconstruction_failure_email(
+                contribution_id=contrib_id,
+                mesh_id=meshID,
+                mesh_name=contrib.mesh.name,
+                contributor_email=contributor_email,
+                processing_step="ops_runner",
+                error_message=str(e),
+                log_file_path=str(op.log_path)
+                if "op" in locals() and hasattr(op, "log_path")
+                else None,
+                run_id=str(op.runID)
+                if "op" in locals() and hasattr(op, "runID")
+                else None,
+                operation_type=op_name,
+            )
+        except Exception as email_error:
+            cons.print(f"Failed to send failure notification email: {email_error}")
+
         raise e
     cons.rule(f"{op_name} Runner End")

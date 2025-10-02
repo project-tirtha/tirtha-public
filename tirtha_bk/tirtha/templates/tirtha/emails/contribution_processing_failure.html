@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Contribution Processing Failed - Tirtha System Alert</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #f5c6cb; }
+        .content { background-color: #ffffff; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .failure-info { background-color: #f8d7da; color: #721c24; padding: 15px; margin: 15px 0; border-radius: 3px; border: 1px solid #f5c6cb; }
+        .error-details { background-color: #fff3cd; color: #856404; padding: 15px; margin: 15px 0; border-radius: 3px; border: 1px solid #ffeaa7; font-family: monospace; }
+        .action-button { display: inline-block; background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 15px 5px 15px 0; }
+        .action-button:hover { background-color: #c82333; }
+        .secondary-button { background-color: #6c757d; }
+        .secondary-button:hover { background-color: #5a6268; }
+        .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 0.9em; color: #6c757d; }
+        .alert { background-color: #d1ecf1; color: #0c5460; padding: 15px; margin: 15px 0; border-radius: 3px; border: 1px solid #bee5eb; }
+        .critical { border-left: 4px solid #dc3545; padding-left: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>❌ Contribution Processing Failed</h2>
+            <p><strong>CRITICAL SYSTEM ALERT</strong></p>
+        </div>
+        
+        <div class="content">
+            <p>Hello Admin,</p>
+            
+            <div class="critical">
+                <p><strong>A contribution processing task has failed in the Tirtha platform and requires immediate attention.</strong></p>
+            </div>
+            
+            <div class="failure-info">
+                <h3>Failure Details:</h3>
+                <p><strong>Contribution ID:</strong> {{ contribution_id }}</p>
+                <p><strong>CH Site:</strong> {{ mesh_name }} ({{ mesh_id }})</p>
+                <p><strong>Contributor:</strong> {{ contributor_email }}</p>
+                <p><strong>Processing Step:</strong> {{ processing_step }}</p>
+                <p><strong>Operation Type:</strong> {{ operation_type|default:"Unknown" }}</p>
+                {% if run_id %}<p><strong>Run ID:</strong> {{ run_id }}</p>{% endif %}
+            </div>
+            
+            <div class="error-details">
+                <h4>Error Information:</h4>
+                <pre>{{ error_message }}</pre>
+                {% if log_file_path %}<p><strong>Log File:</strong> {{ log_file_path }}</p>{% endif %}
+            </div>
+            
+            <div class="alert">
+                <p><strong>⚠️ Action Required:</strong> This failure indicates a problem in the processing pipeline that may require manual intervention. Please investigate the issue as soon as possible to ensure proper platform operation.</p>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <a href="{{ contribution_admin_url }}" class="action-button">View Contribution</a>
+                <a href="{{ mesh_admin_url }}" class="action-button secondary-button">View CH Site</a>
+            </div>
+            
+            <div class="footer">
+                <p>You can also access the <a href="{{ base_admin_url }}">admin panel</a> directly to investigate further.</p>
+                <hr style="margin: 15px 0;">
+                <p><em>This is an automated alert from the Tirtha system. Do not reply to this email.</em></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
