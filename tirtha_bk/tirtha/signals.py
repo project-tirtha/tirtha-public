@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.db.models.signals import post_delete, post_migrate, post_save, pre_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -186,42 +186,45 @@ def notify_admin_new_contribution(sender, instance, created, **kwargs):
             f"New contribution created: {instance.ID} by {contributor_email} - sending admin notification"
         )
 
-        # Get image count for this contribution
-        image_count = instance.images.count()
+        def send_notification():
+            # Get image count for this contribution
+            image_count = instance.images.count()
 
-        # Get total stats for the mesh
-        total_images = (
-            instance.mesh.contributions.aggregate(total=models.Count("images"))["total"]
-            or 0
-        )
-        total_contributions = instance.mesh.contributions.count()
-
-        # Prepare email content
-        subject = f"New Contribution: {instance.mesh.name} - {image_count} images"
-
-        # Template context for rendering emails
-        context = {
-            "contribution": instance,
-            "image_count": image_count,
-            "total_images": total_images,
-            "total_contributions": total_contributions,
-            "contribution_admin_url": f"{settings.BASE_URL}/admin/tirtha/contribution/{instance.ID}/change/",
-            "mesh_admin_url": f"{settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/change/",
-            "base_admin_url": f"{settings.BASE_URL}/admin/",
-        }
-
-        # Render email templates
-        try:
-            html_message = render_to_string(
-                "tirtha/emails/new_contribution_notification.html", context
+            # Get total stats for the mesh
+            total_images = (
+                instance.mesh.contributions.aggregate(total=models.Count("images"))[
+                    "total"
+                ]
+                or 0
             )
-            text_message = render_to_string(
-                "tirtha/emails/new_contribution_notification.txt", context
-            )
-        except Exception as e:
-            logger.error(f"Failed to render contribution email templates: {e}")
-            # Fallback to plain text message
-            text_message = f"""
+            total_contributions = instance.mesh.contributions.count()
+
+            # Prepare email content
+            subject = f"New Contribution: {instance.mesh.name} - {image_count} images"
+
+            # Template context for rendering emails
+            context = {
+                "contribution": instance,
+                "image_count": image_count,
+                "total_images": total_images,
+                "total_contributions": total_contributions,
+                "contribution_admin_url": f"{settings.BASE_URL}/admin/tirtha/contribution/{instance.ID}/change/",
+                "mesh_admin_url": f"{settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/change/",
+                "base_admin_url": f"{settings.BASE_URL}/admin/",
+            }
+
+            # Render email templates
+            try:
+                html_message = render_to_string(
+                    "tirtha/emails/new_contribution_notification.html", context
+                )
+                text_message = render_to_string(
+                    "tirtha/emails/new_contribution_notification.txt", context
+                )
+            except Exception as e:
+                logger.error(f"Failed to render contribution email templates: {e}")
+                # Fallback to plain text message
+                text_message = f"""
 A new contribution has been added to Tirtha:
 
 Heritage Site: {instance.mesh.name} ({instance.mesh.ID})
@@ -236,37 +239,42 @@ View Heritage Site: {settings.BASE_URL}/admin/tirtha/mesh/{instance.mesh.ID}/cha
 Best regards,
 Tirtha System
             """
-            html_message = None
+                html_message = None
 
-        # Get admin emails from settings
-        admin_emails = [email for name, email in getattr(settings, "ADMINS", [])]
-        if not admin_emails:
-            admin_emails = [settings.ADMIN_MAIL]  # Fallback to ADMIN_MAIL setting
+            # Get admin emails from settings
+            admin_emails = [email for name, email in getattr(settings, "ADMINS", [])]
+            if not admin_emails:
+                admin_emails = [settings.ADMIN_MAIL]  # Fallback to ADMIN_MAIL setting
 
-        try:
-            # Import here to avoid circular imports
-            from django.core.mail import EmailMultiAlternatives
+            try:
+                # Import here to avoid circular imports
+                from django.core.mail import EmailMultiAlternatives
 
-            # Create email message
-            email = EmailMultiAlternatives(
-                subject=subject,
-                body=text_message,
-                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", settings.ADMIN_MAIL),
-                to=admin_emails,
-            )
+                # Create email message
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_message,
+                    from_email=getattr(
+                        settings, "DEFAULT_FROM_EMAIL", settings.ADMIN_MAIL
+                    ),
+                    to=admin_emails,
+                )
 
-            # Add HTML version if available
-            if html_message:
-                email.attach_alternative(html_message, "text/html")
+                # Add HTML version if available
+                if html_message:
+                    email.attach_alternative(html_message, "text/html")
 
-            email.send(fail_silently=False)
-            logger.info(
-                f"Admin notification sent successfully for new contribution: {instance.ID}"
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to send admin notification for new contribution {instance.ID}: {e}"
-            )
+                email.send(fail_silently=False)
+                logger.info(
+                    f"Admin notification sent successfully for new contribution: {instance.ID}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to send admin notification for new contribution {instance.ID}: {e}"
+                )
+
+        # Schedule notification to run after transaction commits
+        transaction.on_commit(send_notification)
 
 
 @receiver(post_save, sender=Mesh)

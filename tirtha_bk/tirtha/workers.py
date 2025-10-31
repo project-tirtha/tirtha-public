@@ -58,15 +58,6 @@ class BaseOps:
         self.meshStr = f"{self.meshVID} <=> {self.meshID}"  # Used in logging
         self.contrib_id = contrib_id
 
-        # Get contribution object if contrib_id provided
-        self.contribution = None
-        if contrib_id:
-            try:
-                self.contribution = Contribution.objects.get(ID=contrib_id)
-            except Contribution.DoesNotExist:
-                # Log warning but continue - this is optional
-                pass
-
         # Create new Run
         self.kind = kind
         self.run = run = Run.objects.create(mesh=mesh, kind=kind)
@@ -93,6 +84,15 @@ class BaseOps:
         cls.logger.info(
             f"ID {meshID} has Verbose ID (VID) {self.meshVID}. Using VID for logging."
         )
+
+        # Get contribution object if contrib_id provided
+        self.contribution = None
+        if contrib_id:
+            try:
+                self.contribution = Contribution.objects.get(ID=contrib_id)
+            except Contribution.DoesNotExist:
+                # Log warning but continue
+                cls.logger.warning(f"Contribution with ID {contrib_id} does not exist.")
 
         # Source (images) & run directories
         self.imageDir = MEDIA / f"models/{meshID}/images/good"
@@ -236,7 +236,8 @@ class BaseOps:
             )
         except Exception as email_error:
             self.logger.error(
-                f"Failed to send failure notification email: {email_error}"
+                f"Failed to send failure notification email: {email_error}",
+                exc_info=True,
             )
 
         raise excep
@@ -494,8 +495,8 @@ class MeshOps(BaseOps):
 
     """
 
-    def __init__(self, meshID: str) -> None:
-        super().__init__(meshID=meshID, kind="aV")
+    def __init__(self, meshID: str, contrib_id: str) -> None:
+        super().__init__(meshID=meshID, kind="aV", contrib_id=contrib_id)
 
         # Check if executables exist
         self.aV_exec = Path(ALICEVISION_DIRPATH)
@@ -699,17 +700,17 @@ class GSOps(BaseOps):
 
     """
 
-    def __init__(self, meshID: str) -> None:
-        super().__init__(meshID=meshID, kind="GS")
+    def __init__(self, meshID: str, contrib_id: str) -> None:
+        super().__init__(meshID=meshID, kind="GS", contrib_id=contrib_id)
 
         # Check if nerfstudio is installed
         from importlib.util import find_spec
 
         if find_spec("nerfstudio"):
-            self.logger.info("nerf_studio is installed.")
+            self.logger.info("nerfstudio is installed.")
         else:
-            self.logger.error("nerf_studio is not installed.")
-            self._handle_error(ImportError("nerf_studio is not installed."), "GSOps")
+            self.logger.error("nerfstudio is not installed.")
+            self._handle_error(ImportError("nerfstudio is not installed."), "GSOps")
 
         # Specify the run order (else alphabetical order)
         self._run_order = [

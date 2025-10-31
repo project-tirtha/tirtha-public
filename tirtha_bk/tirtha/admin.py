@@ -492,9 +492,9 @@ class ContributionAdmin(admin.ModelAdmin):
         "processed",
     )
     list_per_page = 50
-    # inlines = [
-    #     ImageInlineContribution,
-    # ]
+    inlines = [
+        ImageInlineContribution,
+    ]
 
 
 @admin.register(Image)
@@ -682,7 +682,7 @@ class RunAdmin(admin.ModelAdmin):
                         "rotaZ",
                         "rotaX",
                         "rotaY",
-                    ),  
+                    ),
                     # GS Viewer Settings
                     (
                         "initCamPosX",
