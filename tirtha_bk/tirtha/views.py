@@ -220,6 +220,154 @@ def index(request, vid: str = None, runid: str = None):
     return render(request, template, context)
 
 
+# TODO: FIXME: Commented out since no XHR to accommodate GS runs
+# @require_GET
+# def loadMesh(request):
+#     """
+#     Allows AJAX requests to load mesh.
+
+#     """
+#     vid = request.GET.get("vid", None)
+
+#     try:
+#         mesh = Mesh.objects.get(verbose_id=vid)
+#         runs_arks = list(
+#             mesh.runs.filter(status="Archived")
+#             .order_by("-ended_at")
+#             .values_list("ark", flat=True)
+#         )
+#         # Get latest successful run for mesh (among Run.status == "Archived")
+#         try:
+#             run = mesh.runs.filter(status="Archived").latest("ended_at")
+#         except Run.DoesNotExist:
+#             run = None
+
+#         # FIXME: LATE_EXP: Maybe remove default meshes and only allow runs to be loaded.
+#         # Having both is counter-intuitive.
+#         data = {
+#             "status": "Mesh found!",
+#             "mesh": {
+#                 "status": mesh.status,
+#                 "has_run": True if run else False,
+#                 "src": run.ark.url
+#                 if run
+#                 else PRE_URL + f"static/models/{mesh.ID}/published/{mesh.ID}__default.glb",
+#                 "prev_url": mesh.preview.url,
+#                 "name": mesh.name,
+#                 "desc": mesh.description,
+#                 "last_recons": str(
+#                     mesh.reconstructed_at.astimezone(
+#                         pytz.timezone("Asia/Kolkata")
+#                     ).strftime("%B %d, %Y")
+#                 )
+#                 if mesh.reconstructed_at
+#                 else "Not reconstructed yet.",
+#                 "contrib_type": "run" if run else "mesh",
+#                 "runs_arks": runs_arks if runs_arks else ["N.A."],
+#                 "run_ark": f"{run.ark}" if run else "N.A.",
+#                 "run_ark_url": f"{BASE_URL}/{run.ark}" if run else "javascript:;",
+#                 "contrib_count": int(run.contributors.count())
+#                 if run
+#                 else mesh.contributions.count(),
+#                 "images_count": int(run.images.count())
+#                 if run
+#                 else Image.objects.filter(contribution__mesh=mesh).count(),
+#                 "orientation": f"{run.rotaZ}deg {run.rotaX}deg {run.rotaY}deg"
+#                 if run
+#                 else f"{mesh.rotaZ}deg {mesh.rotaX}deg {mesh.rotaY}deg",
+#             },
+#         }
+#     except Mesh.DoesNotExist:
+#         data = {"status": "Mesh not found!", "mesh": None}
+
+#     return JsonResponse(data)
+
+
+# @require_GET
+# def loadRun(request):
+#     """
+#     Allows AJAX requests to load run.
+
+#     """
+#     runark = request.GET.get("runark", None)
+#     runark = "ark:/" + unquote(runark)
+
+#     try:
+#         naan, assigned_name = parse_ark(runark)
+#         ark = ARK.objects.get(ark=f"{naan}/{assigned_name}")
+#         run = ark.run
+#         data = {
+#             "status": "Run found!",
+#             "run": {
+#                 "mesh_src": run.ark.url,
+#                 "orientation": f"{run.rotaZ}deg {run.rotaX}deg {run.rotaY}deg",
+#                 "ended_at": str(
+#                     run.ended_at.astimezone(pytz.timezone("Asia/Kolkata")).strftime(
+#                         "%B %d, %Y"
+#                     )
+#                 ),
+#                 "contrib_count": int(run.contributors.count()),
+#                 "images_count": int(run.images.count()),
+#                 "contrib_type": "run",
+#                 "run_ark": f"{run.ark}",
+#                 "run_ark_url": f"{BASE_URL}/{run.ark}",
+#                 "mesh_name": run.mesh.name,
+#                 "runid": run.ID,
+#             },
+#         }
+
+#     except Run.DoesNotExist as e:
+#         data = {"status": "Run not found!", "run": None}
+
+#     return JsonResponse(data)
+
+
+def _signin(user_info: dict) -> tuple:
+    """
+    Retrieves or creates the contributor.
+
+    """
+    # For development only
+    if not GOOGLE_LOGIN:
+        logging.info("_signin -- Google login is disabled.")
+        # Return default contributor
+        contrib = Contributor.objects.get(email=ADMIN_MAIL)
+        output = f"Signed-in as {ADMIN_MAIL}."
+        return output, contrib
+    
+    logging.info(f"_signin -- Google login is enabled. Signing in user: {user_info}")
+    # Get contributor info
+    email = user_info.get("email")
+    name = user_info.get("name")
+
+    # NOTE: Treating email as unique ID, both for our DB and Google's
+    # NOTE: Contributor is created as inactive | Manual activation required
+    # CHECK: TODO: Allow auto-activation after testing
+    # Get or create contributor
+    contrib, _ = Contributor.objects.get_or_create(
+        email=email, defaults={"active": False}
+    )
+
+    # If name has changed, update name
+    if name != contrib.name:
+        logging.info(f"Updating name for {email} from {contrib.name} to {name}.")
+        contrib.name = name
+        contrib.save()
+
+    # Check if active
+    output = f"Signed-in as {email}."
+    if not contrib.active:
+        logging.info(f"{email} is not active.")
+        output = f"{email} is not active. Please contact the admin."
+
+    # Check if banned
+    if contrib.banned:
+        logging.info(f"{email} has been banned.")
+        output = f"{email} has been banned. Please contact the admin."
+
+    return output, contrib
+
+
 @require_GET
 def signin(request):
     """OAuth2.0 authorization redirect to Google."""
