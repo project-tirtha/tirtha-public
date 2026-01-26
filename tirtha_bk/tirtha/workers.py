@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import pytz
 from datetime import datetime
@@ -25,6 +26,8 @@ MEDIA = Path(settings.MEDIA_ROOT)
 LOG_DIR = Path(settings.LOG_DIR)
 ARCHIVE_ROOT = Path(settings.ARCHIVE_ROOT)
 GS_MAX_ITER = settings.GS_MAX_ITER
+MIN_MATCHED_IMAGES = settings.MIN_MATCHED_IMAGES
+MIN_MATCH_RATIO = settings.MIN_MATCH_RATIO
 MESHOPS_MIN_IMAGES = settings.MESHOPS_MIN_IMAGES
 ALICEVISION_DIRPATH = settings.ALICEVISION_DIRPATH
 NSFW_MODEL_DIRPATH = settings.NSFW_MODEL_DIRPATH
@@ -37,6 +40,14 @@ COLMAP_PATH = settings.COLMAP_PATH
 BASE_URL = settings.BASE_URL
 ARK_NAAN = settings.ARK_NAAN
 ARK_SHOULDER = settings.ARK_SHOULDER
+MAIL_CONTRIB_TOGGLE = settings.MAIL_CONTRIB_TOGGLE
+
+
+class RunCancelledError(Exception):
+    """
+    Raised when a run is intentionally cancelled.
+    
+    """
 
 
 class BaseOps:
@@ -58,6 +69,9 @@ class BaseOps:
         self.meshVID = mesh.verbose_id
         self.meshStr = f"{self.meshVID} <=> {self.meshID}"  # Used in logging
         self.contrib_id = contrib_id
+        self.cancelled = False
+        self.cancel_reason = None
+
         # Create new Run
         self.kind = kind
         self.run = run = Run.objects.create(mesh=mesh, kind=kind)
@@ -144,12 +158,18 @@ class BaseOps:
             If any exception is raised during the execution
 
         """
+        step_name = None
         try:
             if self._run_order:
                 for step in self._run_order:
+                    step_name = step
                     getattr(self, step)()
             else:
                 raise ValueError("_run_order is not defined.")
+        except RunCancelledError as cancel_err:
+            self.logger.info(
+                f"Run cancelled during '{step_name or 'unknown'}': {cancel_err}"
+            )
         except Exception as e:
             self._handle_error(excep=e, caller="_run_all")
 
@@ -184,6 +204,12 @@ class BaseOps:
         # Update statuses to 'Error'
         self._update_mesh_status("Error")
         self.run.ended_at = timezone.now()
+        log_file_info = (
+            f"Log file: {self.logger._log_file}"
+            if hasattr(self.logger, "_log_file")
+            else "Log file: Not available"
+        )
+        self.run.notes = f"Error in {caller}:\n{str(excep)}\n\n{log_file_info}"
         self.run.save()
         self._update_run_status("Error")
         # Send email notification to admin about the failure
@@ -191,32 +217,7 @@ class BaseOps:
             from .email_utils import send_reconstruction_failure_email
 
             # Get contribution and contributor details - use exact contribution if available
-            contribution_id = "Unknown"
-            contributor_email = "Unknown"
-
-            if self.contribution:
-                # Use the exact contribution that triggered this operation
-                contribution_id = str(self.contribution.ID)
-                contributor_email = self.contribution.contributor.email
-            elif self.contrib_id:
-                # Fallback: use contrib_id string
-                contribution_id = str(self.contrib_id)
-                # Try to get contributor email
-                try:
-                    contrib = Contribution.objects.get(ID=self.contrib_id)
-                    contributor_email = contrib.contributor.email
-                except Contribution.DoesNotExist:
-                    pass
-            else:
-                # Fallback: use run or mesh contributions (old behavior)
-                if self.run.contributions.exists():
-                    latest_contribution = self.run.contributions.first()
-                    contribution_id = str(latest_contribution.ID)
-                    contributor_email = latest_contribution.contributor.email
-                elif self.run.mesh.contributions.exists():
-                    latest_contribution = self.run.mesh.contributions.first()
-                    contribution_id = str(latest_contribution.ID)
-                    contributor_email = latest_contribution.contributor.email
+            contribution_id, contributor_email = self._resolve_contribution_details()
 
             send_reconstruction_failure_email(
                 contribution_id=contribution_id,
@@ -236,7 +237,109 @@ class BaseOps:
                 f"Failed to send failure notification email: {email_error}",
                 exc_info=True,
             )
+
         raise excep
+
+    def _resolve_contribution_details(self) -> tuple[str, str]:
+        """
+        Return best-effort contribution ID and contributor email for notifications.
+        
+        """
+
+        contribution_id = "Unknown"
+        contributor_email = "Unknown"
+
+        if self.contribution:
+            # Use the exact contribution that triggered this operation
+            contribution_id = str(self.contribution.ID)
+            contributor_email = self.contribution.contributor.email
+            return contribution_id, contributor_email
+
+        if self.contrib_id:
+            # Fallback: use contrib_id string
+            contribution_id = str(self.contrib_id)
+            # Try to get contributor email
+            try:
+                contrib = Contribution.objects.get(ID=self.contrib_id)
+                contributor_email = contrib.contributor.email
+            except Contribution.DoesNotExist:
+                pass
+            return contribution_id, contributor_email
+
+        # Fallback: use run or mesh contributions
+        if self.run.contributions.exists():
+            latest_contribution = self.run.contributions.first()
+            if latest_contribution:
+                contribution_id = str(latest_contribution.ID)
+                contributor_email = latest_contribution.contributor.email
+                return contribution_id, contributor_email
+
+        mesh_contributions = self.run.mesh.contributions
+        if mesh_contributions.exists():
+            latest_contribution = mesh_contributions.first()
+            if latest_contribution:
+                contribution_id = str(latest_contribution.ID)
+                contributor_email = latest_contribution.contributor.email
+
+        return contribution_id, contributor_email
+
+    def _cancel_run(
+        self,
+        *,
+        reason: str,
+        caller: str,
+        log_excerpt: str,
+        log_file_path: Optional[Path] = None,
+    ) -> None:
+        """
+        Cancel the current run, notify admins, and raise a cancellation error.
+        
+        """
+        self.logger.warning(reason)
+        if log_excerpt:
+            self.logger.warning("COLMAP log excerpt:\n%s", log_excerpt)
+
+        self._update_mesh_status("Error")
+        self.run.ended_at = timezone.now()
+        log_file_info = (
+            f"Log file: {log_file_path}" if log_file_path else "Log file: Not available"
+        )
+        notes_content = f"Cancelled: {reason}\n\n{log_file_info}"
+        if log_excerpt:
+            notes_content += f"\n\nCOLMAP log excerpt:\n{log_excerpt}"
+        self.run.notes = notes_content
+        self.run.save()
+        self._update_run_status("Cancelled")
+
+        try:
+            from .email_utils import send_reconstruction_failure_email
+
+            contribution_id, contributor_email = self._resolve_contribution_details()
+            error_message = reason
+            if log_excerpt:
+                error_message = f"{reason}\n\n{log_excerpt}"
+
+            send_reconstruction_failure_email(
+                contribution_id=contribution_id,
+                mesh_id=str(self.mesh.ID),
+                mesh_name=self.mesh.name,
+                contributor_email=contributor_email,
+                processing_step=caller,
+                error_message=error_message,
+                log_file_path=str(log_file_path) if log_file_path else None,
+                run_id=str(self.runID),
+                operation_type=self.kind + "Ops",
+            )
+        except Exception as email_error:
+            self.logger.error(
+                f"Failed to send cancellation notification email: {email_error}",
+                exc_info=True,
+            )
+
+        self.cancelled = True
+        self.cancel_reason = reason
+
+        raise RunCancelledError(reason)
 
     def _update_mesh_status(self, status: str) -> None:
         """
@@ -743,6 +846,7 @@ class GSOps(BaseOps):
         )
         self._serialRunner(cmd, log_path)
         self.logger.info("Processed data for Splatfacto.")
+        self._validate_colmap_matches(log_path)
 
         # Create GS
         self.logger.info("Creating GS using Splatfacto...")
@@ -831,53 +935,86 @@ class GSOps(BaseOps):
 
         self.logger.info(f"Finished post-processing GS for {self.meshStr}.")
 
-
-class PointOps(BaseOps):
-    """
-    Runs the Gaussian splatting pipeline
-
-    """
-
-    def __init__(self, meshID: str) -> None:
-        super().__init__(meshID=meshID, kind="Point")
-        self.opt_path = ""
-        # Specify the run order (else alphabetical order)
-        self._run_order = [
-            "run_vggt",
-        ] + self._run_order_suffix
-
-    def run_vggt(self) -> None:
+    def _validate_colmap_matches(self, log_path: Path) -> None:
         """
-        Creates PointCloud using VGGT
+        Validate COLMAP matches and cancel the run if insufficient.
+
         """
-        log_path = self.log_path / "VGGT.log"
-        output_path = self.runDir / "output/"
-        output_path.mkdir(parents=True, exist_ok=True)
 
-        # Full paths from settings
-        vggt_script = settings.VGGT_SCRIPT_PATH
-        vggt_env = settings.VGGT_ENV_PATH
-        venv_python = Path(vggt_env) / "bin/python"
+        if not log_path.exists():
+            self.logger.warning(
+                f"COLMAP statistics log not found at {log_path}; skipping match validation."
+            )
+            return
 
-        if not venv_python.exists():
-            self._handle_error(
-                FileNotFoundError(f"Python not found in {venv_python}"), "run_vggt"
+        try:
+            log_text = log_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception as read_error:
+            self.logger.error(
+                f"Unable to read splatfacto log at {log_path}: {read_error}"
+            )
+            return
+
+        total_match = re.search(
+            r"Starting with\s+(\d+)\s+images", log_text, re.IGNORECASE
+        )
+        matched_match = re.search(
+            r"Colmap matched\s+(\d+)\s+images", log_text, re.IGNORECASE
+        )
+
+        if not total_match or not matched_match:
+            self.logger.info(
+                "COLMAP match statistics not found in splatfacto log; skipping validation."
+            )
+            return
+
+        total_images = int(total_match.group(1))
+        matched_images = int(matched_match.group(1))
+        match_ratio = (matched_images / total_images) if total_images else 0.0
+
+        excerpt_match = re.search(
+            r"(Starting with.*?large exposure changes\.)",
+            log_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        excerpt = (
+            excerpt_match.group(1) if excerpt_match else "Log excerpt unavailable."
+        )
+
+        low_ratio = total_images == 0 or match_ratio < MIN_MATCH_RATIO
+        low_count = matched_images < MIN_MATCHED_IMAGES
+
+        if low_ratio or low_count:
+            ratio_pct = f"{match_ratio:.2%}" if total_images else "N/A"
+            threshold_notes: list[str] = []
+            if low_ratio:
+                threshold_notes.append("match rate below 10%")
+            if low_count:
+                threshold_notes.append("fewer than 5 matched images")
+            thresholds_text = " and ".join(threshold_notes)
+            reason = (
+                "COLMAP matched only "
+                + (
+                    f"{matched_images} of {total_images} images ({ratio_pct})"
+                    if total_images
+                    else f"{matched_images} images"
+                )
+                + f" ({thresholds_text}). Cancelling run."
             )
 
-        self.logger.info("Running VGGT pipeline...")
+            self._cancel_run(
+                reason=reason,
+                caller="run_splatfacto",
+                log_excerpt=excerpt,
+                log_file_path=log_path,
+            )
 
-        # Compose the command
-        cmd = f"{venv_python} {vggt_script} --image_dir {self.imageDir} --out_dir {output_path} --prediction_mode 'depth'"
-
-        self._serialRunner(cmd, log_path)
-
-        # Check for expected output file
-        expected_ply = output_path / "points.ply"
-        self._check_output(expected_ply, "run_vggt")
-
-        self.logger.info("Finished running VGGT pipeline.")
-
-        self.opt_path = output_path
+        self.logger.info(
+            "COLMAP matched %s of %s images (%.2f%%); proceeding with GS pipeline.",
+            matched_images,
+            total_images,
+            match_ratio * 100,
+        )
 
 
 """
@@ -967,72 +1104,82 @@ def ops_runner(contrib_id: str, kind: str) -> None:
         start_time = datetime.now()
         op._run_all()
 
-        # Calculate processing duration
-        end_time = datetime.now()
-        processing_duration = str(end_time - start_time).split(".")[
-            0
-        ]  # Remove microseconds
-
-        cons.print(
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Finished {op_name} on {meshVID} <=> {meshID}."
-        )
-
-        # Send success email notification to contributor and admins
-        try:
-            from .email_utils import (
-                send_contribution_processing_success_email,
-                send_admin_run_completion_email,
-            )
-
-            contributor_name = (
-                contrib.contributor.name or contrib.contributor.email.split("@")[0]
-            )
-
-            # Get ARK information if available
-            ark_url = None
-            ark_id = None
-            if hasattr(op, "run") and op.run.ark:
-                ark_url = f"{settings.BASE_URL}/ark:/{op.run.ark.ark}"
-                ark_id = op.run.ark.ark
-
-            # Send notification to contributor
-            send_contribution_processing_success_email(
-                contribution_id=contrib_id,
-                mesh_id=meshID,
-                mesh_name=contrib.mesh.name,
-                contributor_email=contrib.contributor.email,
-                contributor_name=contributor_name,
-                operation_type=kind,
-                run_id=str(op.runID) if hasattr(op, "runID") else None,
-                mesh_url=f"{settings.BASE_URL}/mesh/{meshID}/",
-                processing_duration=processing_duration,
-                ark_url=ark_url,
-                ark_id=ark_id,
-            )
+        if getattr(op, "cancelled", False):
+            cancel_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cancel_reason = getattr(op, "cancel_reason", "Run cancelled.")
             cons.print(
-                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Success notification sent to {contrib.contributor.email}."
+                f"{cancel_timestamp}: {op_name} cancelled for {meshVID} <=> {meshID}. {cancel_reason}"
             )
+        else:
+            # Calculate processing duration
+            end_time = datetime.now()
+            processing_duration = str(end_time - start_time).split(".")[
+                0
+            ]  # Remove microseconds
 
-            # Send notification to admins
-            send_admin_run_completion_email(
-                contribution_id=contrib_id,
-                mesh_id=meshID,
-                mesh_name=contrib.mesh.name,
-                contributor_email=contrib.contributor.email,
-                contributor_name=contributor_name,
-                operation_type=kind,
-                run_id=str(op.runID) if hasattr(op, "runID") else None,
-                processing_duration=processing_duration,
-                ark_url=ark_url,
-                ark_id=ark_id,
-            )
             cons.print(
-                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Admin notification sent for run completion."
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Finished {op_name} on {meshVID} <=> {meshID}."
             )
 
-        except Exception as email_error:
-            cons.print(f"Warning: Failed to send notification emails: {email_error}")
-            # NOTE: Don't raise the exception - email failure shouldn't break the processing
+            # Send success email notification to contributor and admins
+            try:
+                from .email_utils import (
+                    send_contribution_processing_success_email,
+                    send_admin_run_completion_email,
+                )
+
+                contributor_name = (
+                    contrib.contributor.name or contrib.contributor.email.split("@")[0]
+                )
+
+                # Get ARK information if available
+                ark_url = None
+                ark_id = None
+                if hasattr(op, "run") and op.run.ark:
+                    ark_url = f"{settings.BASE_URL}/ark:/{op.run.ark.ark}"
+                    ark_id = op.run.ark.ark
+
+                # Conditionally send notification to contributor
+                if MAIL_CONTRIB_TOGGLE:
+                    send_contribution_processing_success_email(
+                        contribution_id=contrib_id,
+                        mesh_id=meshID,
+                        mesh_name=contrib.mesh.name,
+                        contributor_email=contrib.contributor.email,
+                        contributor_name=contributor_name,
+                        operation_type=kind,
+                        run_id=str(op.runID) if hasattr(op, "runID") else None,
+                        mesh_url=f"{settings.BASE_URL}/mesh/{meshID}/",
+                        processing_duration=processing_duration,
+                        ark_url=ark_url,
+                        ark_id=ark_id,
+                    )
+                    cons.print(
+                        f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Success notification sent to {contrib.contributor.email}."
+                    )
+
+                # Send notification to admins
+                send_admin_run_completion_email(
+                    contribution_id=contrib_id,
+                    mesh_id=meshID,
+                    mesh_name=contrib.mesh.name,
+                    contributor_email=contrib.contributor.email,
+                    contributor_name=contributor_name,
+                    operation_type=kind,
+                    run_id=str(op.runID) if hasattr(op, "runID") else None,
+                    processing_duration=processing_duration,
+                    ark_url=ark_url,
+                    ark_id=ark_id,
+                )
+                cons.print(
+                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Admin notification sent for run completion."
+                )
+
+            except Exception as email_error:
+                cons.print(
+                    f"Warning: Failed to send notification emails: {email_error}"
+                )
+                # NOTE: Don't raise the exception - email failure shouldn't break the processing
 
     except Exception as e:
         cons.print(
