@@ -185,15 +185,18 @@ def index(request, vid: str = None, runid: str = None):
         try:
             if vid:
                 mesh = Mesh.objects.get(verbose_id=vid)
+                if mesh.hidden:
+                    logging.warning(f"Attempt to access hidden Mesh: {vid}")
+                    raise Mesh.DoesNotExist("Mesh is hidden.")
             else:
                 mesh = Mesh.objects.get(ID=settings.DEFAULT_MESH_ID)
 
             # Try to get latest archived run
             try:
                 run = mesh.runs.filter(status="Archived").latest("ended_at")
-                if run.hidden:
-                    logging.warning(f"Attempt to access hidden Run: {run.ID}")
-                    raise Run.DoesNotExist("Run is hidden.")
+                if run.hidden or run.mesh.hidden:
+                    logging.warning(f"Attempt to access hidden Run or Mesh: {run.ID}")
+                    raise Run.DoesNotExist("Run or Mesh is hidden.")
             except Run.DoesNotExist:
                 run = None
 
