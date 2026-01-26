@@ -10,10 +10,9 @@ from .utils import Logger
 
 cel_logger = get_task_logger(__name__)
 LOG_DIR = Path(settings.LOG_DIR)
+MESHOPS_MAX_IMAGES = settings.MESHOPS_MAX_IMAGES
 MESHOPS_CONTRIB_DELAY = settings.MESHOPS_CONTRIB_DELAY  # hours
-BACKUP_INTERVAL = crontab(
-    minute=0, hour=0, day_of_week=0
-)  # Every 1 week at 00:00 on Sunday
+BACKUP_INTERVAL = crontab(minute=0, hour=0)  # Every day at 00:00
 DBCLEANUP_INTERVAL = crontab(
     minute=0, hour=0, day_of_week=0
 )  # Every week at 00:00 on Sunday
@@ -109,7 +108,7 @@ def post_save_contrib_imageops(self, contrib_id: str, recons_type: str = "all") 
 
 
 @app.task(bind=True)
-def recon_runner_task(self, contrib_id: str, recons_type: str = "all") -> None:
+def recon_runner_task(self, contrib_id: str, recons_type: str = "all", cond_run_av: bool = True) -> None:
     """
     Triggers `MeshOps` & `GSOps`, when a `Run` instance is created.
 
@@ -121,9 +120,38 @@ def recon_runner_task(self, contrib_id: str, recons_type: str = "all") -> None:
         The `Contribution` instance's UUID.
     recons_type : str, optional
         The reconstruction type, by default "all" ["GS", "aV"].
+    cond_run_av : bool, optional
+        Whether to conditionally run aV based on image count, by default True.
+        Needed on low V/RAM devices to avoid OOM & malloc issues.
 
     """
-    ops = ["GS", "aV"] if recons_type == "all" else [recons_type]
+    # Determine ops based on recons_type and conditional AV checks
+    if recons_type == "aV":
+        ops = ["aV"]
+    elif recons_type == "GS":
+        ops = ["GS"]
+    elif recons_type == "all":
+        # Default to running both aV then GS
+        ops = ["aV", "GS"]
+        # If conditional AV runs are enabled, check total images across the mesh
+        if cond_run_av:
+            from .models import Contribution, Image
+
+            try:
+                contrib = Contribution.objects.get(ID=contrib_id)
+                mesh = contrib.mesh
+                total_images = Image.objects.filter(contribution__mesh=mesh).count()
+                if total_images > MESHOPS_MAX_IMAGES:
+                    cel_logger.warning(
+                        f"recon_runner_task (task_id={self.request.id}): Mesh {mesh.ID} has {total_images} images (> {MESHOPS_MAX_IMAGES}); skipping aV to avoid OOM. Running GS only."
+                    )
+                    ops = ["GS"]
+            except Exception as e:
+                cel_logger.error(
+                    f"recon_runner_task (task_id={self.request.id}): Failed to check image count for contrib {contrib_id}: {e}. Proceeding with ops={ops}."
+                )
+    else:
+        ops = [recons_type,]
 
     from .workers import prerun_check, ops_runner
 
