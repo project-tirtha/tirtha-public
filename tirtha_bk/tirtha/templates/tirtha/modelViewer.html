@@ -2,7 +2,7 @@
     {% block model %}
     <script>
         self.ModelViewerElement = self.ModelViewerElement || {};
-        self.ModelViewerElement.meshoptDecoderLocation = "https://unpkg.com/meshoptimizer/meshopt_decoder.js";
+        self.ModelViewerElement.meshoptDecoderLocation = "https://unpkg.com/meshoptimizer@0.25.0/meshopt_decoder.js";
     </script>
     <model-viewer id="model-viewer-id"
     src="{% if run %}{{ run.ark.url }}{% else %}{{ src }}{% endif %}"
