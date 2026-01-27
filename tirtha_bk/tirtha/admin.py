@@ -5,11 +5,13 @@ from django.urls import reverse
 from django.utils.html import mark_safe
 from django.utils.translation import ngettext
 
-import io
 import zipfile
 import os
+import shutil
+import tempfile
+from datetime import datetime, timezone
 from django.http import HttpResponse, Http404, StreamingHttpResponse
-from pathlib import Path
+from django import forms
 
 # Local imports
 from .models import ARK, Contribution, Contributor, Image, Mesh, Run
@@ -1004,8 +1006,21 @@ class ContributorInlineRun(admin.TabularInline):
     extra = 0
 
 
+class RunReplaceForm(forms.ModelForm):
+    replacement = forms.FileField(
+        required=False,
+        label="Replace final output",
+        help_text="Upload .gltf/.glb for MeshOps (aV) or .splat for GSOps. Staff or superusers only.",
+    )
+
+    class Meta:
+        model = Run
+        fields = []
+
 @admin.register(Run)
 class RunAdmin(admin.ModelAdmin):
+    form = RunReplaceForm
+
     def mesh_id_verbose(self, obj):
         return obj.mesh.verbose_id
 
@@ -1034,7 +1049,7 @@ class RunAdmin(admin.ModelAdmin):
             "Run Details",
             {
                 "fields": (
-                    ("ID", "download_link"),
+                    ("ID", "download_link", "replacement"),
                     ("ark"),
                     ("mesh_id_verbose"),
                     ("kind"),
@@ -1106,6 +1121,11 @@ class RunAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.download_run_full_view),
                 name="tirtha_run_download_full",
             ),
+            path(
+                "<str:object_id>/replace_output/",
+                self.admin_site.admin_view(self.replace_output_view),
+                name="tirtha_run_replace_output",
+            ),
         ]
         return my_urls + urls
 
@@ -1115,6 +1135,13 @@ class RunAdmin(admin.ModelAdmin):
             run = Run.objects.get(ID=object_id)
         except Run.DoesNotExist:
             raise Http404("Run not found")
+
+        # Only allow replacement on Archived runs
+        if run.status != "Archived":
+            self.message_user(request, "Replacement allowed only for Archived runs.", level=messages.ERROR)
+            from django.core.exceptions import PermissionDenied
+
+            raise PermissionDenied
 
         mesh = run.mesh
 
@@ -1327,6 +1354,44 @@ class RunAdmin(admin.ModelAdmin):
 
     download_link.short_description = "Download Output"
 
+    # Replacement is handled via the change form
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        # If a replacement file was submitted via the change form, delegate
+        # to the existing replace_output_view which performs permission checks
+        # and the atomic replacement logic.
+        try:
+            if request.method == "POST" and request.FILES.get("replacement"):
+                return self.replace_output_view(request, object_id)
+        except Exception:
+            # Let replace_output_view handle messaging/logging; fall through to normal handling
+            pass
+
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def get_fieldsets(self, request, obj=None):
+        """Return fieldsets but hide the `replacement` input unless the Run is Archived."""
+        try:
+            # Work on a shallow copy of the configured fieldsets
+            fsets = [
+                (title, dict(options)) if isinstance(options, dict) else (title, options)
+                for (title, options) in self.fieldsets
+            ]
+            if obj is None or getattr(obj, "status", None) != "Archived":
+                # Modify the first fieldset's fields tuple to remove 'replacement' where present
+                title, opts = fsets[0]
+                fields = list(opts.get("fields", ()))
+                if fields:
+                    first = list(fields[0])
+                    if "replacement" in first:
+                        first = [f for f in first if f != "replacement"]
+                        fields[0] = tuple(first)
+                        opts["fields"] = tuple(fields)
+                        fsets[0] = (title, opts)
+            # Return as tuple in the same structure
+            return tuple(fsets)
+        except Exception:
+            return self.fieldsets
+
     @admin.action(description="Download final published outputs (compressed) for selected runs")
     def download_final_outputs(self, request, queryset):
         # Zips published output folders for selected runs (same logic as single-run published download)
@@ -1426,6 +1491,154 @@ class RunAdmin(admin.ModelAdmin):
             pass
 
         return resp
+
+    def replace_output_view(self, request, object_id):
+        """
+        Admin view to replace the final published output file for a Run. 
+        Strictly enforces allowed upload types: .gltf/.glb for MeshOps and .splat for GSOps.
+        Replacement is performed by writing the upload to a temp file, moving the original 
+        file to a timestamped .bak, then atomically moving the temp file to the original filename. 
+        Run.notes is updated only on success.
+        # NOTE: Only staff users may perform this action.
+        
+        """
+        from django.core.exceptions import PermissionDenied
+
+        if not (request.user.is_staff or request.user.is_superuser):
+            self.message_user(request, "Permission denied: staff or superuser only.", level=messages.ERROR)
+            raise PermissionDenied
+
+        try:
+            run = Run.objects.get(ID=object_id)
+        except Run.DoesNotExist:
+            raise Http404("Run not found")
+
+        mesh = run.mesh
+        static_models = os.path.join(settings.STATIC_ROOT, "models")
+        pub_dir = os.path.join(static_models, str(mesh.ID), "published")
+
+        # Find existing final output file for this run
+        existing_file = None
+        if os.path.isdir(pub_dir):
+            # Prefer exact filename with expected extension (workers.py writes .glb for aV, .splat for GS)
+            base_name = f"{mesh.ID}_{run.ID}"
+            candidates = []
+            if run.kind == "aV":
+                candidates = [f"{base_name}.glb", f"{base_name}.gltf"]
+            else:
+                candidates = [f"{base_name}.splat"]
+
+            for cand in candidates:
+                cand_path = os.path.join(pub_dir, cand)
+                if os.path.isfile(cand_path):
+                    existing_file = cand
+                    break
+
+        if not existing_file:
+            self.message_user(request, "Published final output not found for this run.", level=messages.ERROR)
+            raise Http404("Published output not found")
+
+        if request.method == "GET":
+            form_html = (
+                f"<h2>Replace final output for Run {run.ID}</h2>"
+                f"<p>Existing file: <strong>{existing_file}</strong></p>"
+                "<form method=\"post\" enctype=\"multipart/form-data\">"
+                "%s"
+                "<input type=\"file\" name=\"replacement\" required>"
+                "<input type=\"submit\" value=\"Upload & Replace\">"
+                "</form>"
+            )
+            from django.middleware.csrf import get_token
+
+            csrf = f'<input type="hidden" name="csrfmiddlewaretoken" value="{get_token(request)}">'
+            return HttpResponse(form_html % csrf)
+
+        # Process uploaded file
+        uploaded = request.FILES.get("replacement")
+        if not uploaded:
+            self.message_user(request, "No file uploaded.", level=messages.ERROR)
+            return HttpResponse(status=400)
+
+        fname = uploaded.name
+        lower = fname.lower()
+        kind = run.kind
+        # Strict file type enforcement
+        if kind == "aV":
+            if not (lower.endswith(".glb") or lower.endswith(".gltf")):
+                self.message_user(request, "For MeshOps runs, only .glb/.gltf uploads are allowed.", level=messages.ERROR)
+                return HttpResponse(status=400)
+        else:
+            if not lower.endswith(".splat"):
+                self.message_user(request, "For GSOps runs, only .splat uploads are allowed.", level=messages.ERROR)
+                return HttpResponse(status=400)
+
+        orig_path = os.path.join(pub_dir, existing_file)
+        if not os.path.isfile(orig_path):
+            self.message_user(request, "Original final output file missing.", level=messages.ERROR)
+            raise Http404("Original file missing")
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+        # Write uploaded file to a temp file in the same directory
+        try:
+            fd, tmp_path = tempfile.mkstemp(dir=pub_dir)
+            with os.fdopen(fd, "wb") as tmpf:
+                for chunk in uploaded.chunks():
+                    tmpf.write(chunk)
+                tmpf.flush()
+                os.fsync(tmpf.fileno())
+        except Exception as e:
+            logging.exception(f"Error saving uploaded temp file for run {run.ID}")
+            self.message_user(request, "Error saving uploaded file.", level=messages.ERROR)
+            return HttpResponse(status=500)
+
+        backup_name = f"{existing_file}.{timestamp}.bak"
+        backup_path = os.path.join(pub_dir, backup_name)
+
+        try:
+            # Move original to backup, then atomically move temp to original path
+            shutil.move(orig_path, backup_path)
+            # Restrict backup file permissions to 0600
+            try:
+                os.chmod(backup_path, 0o600)
+            except Exception:
+                logging.exception(f"Failed to chmod backup file {backup_path}")
+
+            os.replace(tmp_path, orig_path)
+            # Ensure the replaced final output is world-readable/writeable by owner/group (0664)
+            try:
+                os.chmod(orig_path, 0o664)
+            except Exception:
+                logging.exception(f"Failed to chmod replaced file {orig_path}")
+        except Exception as e:
+            logging.exception(f"Error replacing final output for run {run.ID}")
+            # Ensure temp file removed if exists
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
+            self.message_user(request, "Error performing replacement; original preserved as backup.", level=messages.ERROR)
+            return HttpResponse(status=500)
+
+        # Update Run.notes and log the admin action
+        try:
+            note = f"Final output replaced by admin {request.user.username} at {datetime.now(timezone.utc).isoformat()} UTC. Original file moved to {backup_name}."
+            if run.notes:
+                run.notes = run.notes + "\n" + note
+            else:
+                run.notes = note
+            run.save()
+            logging.info(f"ADMIN RUN OUTPUT REPLACED by {request.user} - run={run.ID} original={existing_file} backup={backup_name} time={timestamp}")
+        except Exception:
+            logging.exception(f"Error updating notes for run {run.ID} after replacement")
+
+        self.message_user(request, "Final output successfully replaced.", level=messages.SUCCESS)
+        # Redirect back to change page
+        change_url = reverse("admin:tirtha_run_change", args=[run.ID])
+        from django.shortcuts import redirect
+
+        return redirect(change_url)
 
     @admin.action(description="Download full run directories (compressed) for selected runs")
     def download_full_runs(self, request, queryset):
