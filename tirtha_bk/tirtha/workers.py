@@ -83,7 +83,7 @@ class BaseOps:
         cls.logger.info(
             f"ID {meshID} has Verbose ID (VID) {self.meshVID}. Using VID for logging."
         )
-  # Get contribution object if contrib_id provided
+        # Get contribution object if contrib_id provided
         self.contribution = None
         if contrib_id:
             try:
@@ -186,7 +186,7 @@ class BaseOps:
         self.run.ended_at = timezone.now()
         self.run.save()
         self._update_run_status("Error")
-       # Send email notification to admin about the failure
+        # Send email notification to admin about the failure
         try:
             from .email_utils import send_reconstruction_failure_email
 
@@ -329,7 +329,7 @@ class BaseOps:
             )
             if len(runs) > 0:
                 for run in runs:
-                   # Handle both relative and absolute paths in run.directory
+                    # Handle both relative and absolute paths in run.directory
                     run_dir_path = Path(run.directory)
                     if run_dir_path.is_absolute():
                         # Already an absolute path (archived run)
@@ -342,7 +342,7 @@ class BaseOps:
                         f"{run.kind} Run {run.ID} for mesh {meshStr} has errors. Deleting..."
                     )
                     if runDir.exists():
-                        shutil.rmtree(runDir)  # Delete folder                
+                        shutil.rmtree(runDir)  # Delete folder
                     run.delete()  # Delete from DB
                     self.logger.info(
                         f"Deleted {run.kind} run {run.ID} for mesh {meshStr}."
@@ -378,7 +378,7 @@ class BaseOps:
             shutil.move(self.runDir, arcDir)  # Move run folder to archive
             # Store relative path to avoid creating nested directory structures in STATIC
             relative_arc_path = arcDir.relative_to(ARCHIVE_ROOT)
-            self.run.directory = str(arcDir)  # Update run directory
+            self.run.directory = str(relative_arc_path)  # Update run directory
             self._update_run_status("Archived")  # Update run status & save
             self.logger.info(
                 f"Archived {kind} run {curr_runID} for mesh {meshStr} to {arcDir}."
@@ -497,7 +497,7 @@ class MeshOps(BaseOps):
 
     """
 
-    def __init__(self, meshID: str, contrib_id:str) -> None:
+    def __init__(self, meshID: str, contrib_id: str) -> None:
         super().__init__(meshID=meshID, kind="aV", contrib_id=contrib_id)
 
         # Check if executables exist
@@ -726,7 +726,6 @@ class GSOps(BaseOps):
 
         """
         alpha_cull_thresh = settings.ALPHA_CULL_THRESH
-        cull_post_dens = settings.CULL_POST_DENS
 
         log_path = self.log_path / "splatfacto.log"
         sf_train_log_path = self.log_path / "splatfacto_train.log"
@@ -748,7 +747,7 @@ class GSOps(BaseOps):
         # Create GS
         self.logger.info("Creating GS using Splatfacto...")
         # NOTE: See https://docs.nerf.studio/nerfology/methods/splat.html#quality-and-regularization
-        reg_opts = (           
+        reg_opts = (
             # Slightly faster, but more memory intensive
             " --pipeline.datamanager.images-on-gpu True"
             # Higher degree for better quality
@@ -756,9 +755,6 @@ class GSOps(BaseOps):
             # Threshold to delete translucent gaussians - lower values remove more (usually better quality)
             " --pipeline.model.cull_alpha_thresh="
             + str(alpha_cull_thresh)
-            # Disable culling after 15K steps
-            + " --pipeline.model.continue_cull_post_densification="
-            + str(cull_post_dens)
             # Less spiky Gaussians
             + " --pipeline.model.use_scale_regularization True"
         )
@@ -871,13 +867,12 @@ class PointOps(BaseOps):
         self.logger.info("Running VGGT pipeline...")
 
         # Compose the command
-        cmd = f"{venv_python} {vggt_script} --image_dir {self.imageDir} --output_dir {output_path} --binary --prediction_mode 'Pointmap Branch'"
+        cmd = f"{venv_python} {vggt_script} --image_dir {self.imageDir} --out_dir {output_path} --prediction_mode 'depth'"
 
         self._serialRunner(cmd, log_path)
 
         # Check for expected output file
-        expected_ply = output_path / "Point.ply"
-        expected_voxel_ply = output_path / "Point_Voxel.ply"
+        expected_ply = output_path / "points.ply"
         self._check_output(expected_ply, "run_vggt")
 
         self.logger.info("Finished running VGGT pipeline.")
@@ -923,13 +918,13 @@ def prerun_check(contrib_id: str, recons_type: str) -> tuple[bool, str]:
             False,
             f"Not enough images to process mesh. Only {images_count} good images found.",
         )
-    if mesh.reconstructed_at and (contrib.processed_at < mesh.reconstructed_at):
-        runs = mesh.runs.filter(status="Archived").order_by("-ended_at")
-        if runs and (runs[0].kind == recons_type):
-            return (
-                False,
-                f"Mesh already reconstructed using {recons_type} using current contribution.",
-            )
+    # if mesh.reconstructed_at and (contrib.processed_at < mesh.reconstructed_at):
+    #     runs = mesh.runs.filter(status="Archived").order_by("-ended_at")
+    #     if runs and (runs[0].kind == recons_type):
+    #         return (
+    #             False,
+    #             f"Mesh already reconstructed using {recons_type} using current contribution.",
+    #         )
 
     return True, "Mesh ready for processing."
 

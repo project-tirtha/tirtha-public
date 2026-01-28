@@ -136,7 +136,7 @@ mapbox_earcut==1.0.2
 Markdown==3.7
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
-matplotlib==3.9.2
+matplotlib==3.10.8
 matplotlib-inline==0.1.7
 mccabe==0.7.0
 mdurl==0.1.2
@@ -301,7 +301,6 @@ urllib3==2.2.3
 vhacdx==0.0.8.post1
 vine==5.1.0
 virtualenv==20.26.4
-viser==0.2.3
 wandb==0.18.0
 wcwidth==0.2.13
 webcolors==24.8.0
@@ -329,3 +328,14 @@ Pillow
 huggingface_hub
 einops
 safetensors
+gradio==5.17.1
+viser==0.2.23
+hydra-core
+omegaconf
+onnxruntime
+trimesh==4.11.1
+pydantic==2.10.6
+# feel free to skip the dependencies below if you do not need demo_colmap.py
+pycolmap==3.10.0
+pyceres==2.3
+git+https://github.com/jytime/LightGlue.git#egg=lightglue

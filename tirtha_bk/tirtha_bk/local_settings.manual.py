@@ -12,7 +12,8 @@ from django.core.management.utils import get_random_secret_key
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")  # CHANGEME: NOTE: Keep this secret
 SECRET_KEY = SECRET_KEY if SECRET_KEY else get_random_secret_key()
-
+VGGT_SCRIPT_PATH = './tirtha/run_vggt.py'
+VGGT_ENV_PATH = '../.venv'
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")  # CHANGEME:
 
 # SECURITY WARNING: do not run with debug turned on in production!
