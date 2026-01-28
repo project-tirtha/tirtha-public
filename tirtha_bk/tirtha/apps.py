@@ -6,5 +6,6 @@ class TirthaConfig(AppConfig):
     name = "tirtha"
 
     def ready(self):
-
+        import tirtha.signals  
+        
         return super().ready()

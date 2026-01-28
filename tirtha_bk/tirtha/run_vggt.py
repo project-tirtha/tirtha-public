@@ -2,7 +2,38 @@
 # All rights reserved.
 #
 # This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
+# LICENSE file here: https://github.com/facebookresearch/vggt/blob/main/LICENSE.txt
+
+
+"""
+VGGT Runner Script
+=================
+
+A script to run the VGGT model for 3D reconstruction from image sequences.
+
+Directory Structure
+------------------
+Input:
+    input_folder/
+    └── images/            # Source images for reconstruction
+
+Output:
+    output_folder/
+    ├── images/
+    ├── sparse/           # Reconstruction results
+    │   ├── cameras.bin   # Camera parameters (COLMAP format)
+    │   ├── images.bin    # Pose for each image (COLMAP format)
+    │   ├── points3D.bin  # 3D points (COLMAP format)
+    │   └── points.ply    # Point cloud visualization file 
+    └── visuals/          # Visualization outputs TODO
+
+Key Features
+-----------
+• Dual-mode Support: Run reconstructions using either VGGT or VGGT+BA
+• Resolution Preservation: Maintains original image resolution in camera parameters and tracks
+• COLMAP Compatibility: Exports results in standard COLMAP sparse reconstruction format
+"""
+
 
 import random
 import numpy as np
