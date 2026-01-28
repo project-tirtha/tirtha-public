@@ -219,7 +219,6 @@ def index(request, vid: str = None, runid: str = None):
 
     return render(request, template, context)
 
-
 @require_GET
 def signin(request):
     """OAuth2.0 authorization redirect to Google."""

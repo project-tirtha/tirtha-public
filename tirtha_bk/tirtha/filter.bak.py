@@ -31,7 +31,7 @@ class Filter:
 
         self.logger = Filter.logger = Logger(
             log_path=self.log_path,
-            name=f"Filtering",
+            name="Filtering",
         )
 
         # if not self.Output_Path.lower().endswith('.ply'):

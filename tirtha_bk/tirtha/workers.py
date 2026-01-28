@@ -28,6 +28,8 @@ GS_MAX_ITER = settings.GS_MAX_ITER
 MESHOPS_MIN_IMAGES = settings.MESHOPS_MIN_IMAGES
 ALICEVISION_DIRPATH = settings.ALICEVISION_DIRPATH
 NSFW_MODEL_DIRPATH = settings.NSFW_MODEL_DIRPATH
+VGGT_SCRIPT_PATH = settings.VGGT_SCRIPT_PATH
+VGGT_ENV_PATH = settings.VGGT_ENV_PATH
 MANIQA_MODEL_FILEPATH = settings.MANIQA_MODEL_FILEPATH
 OBJ2GLTF_PATH = settings.OBJ2GLTF_PATH
 GLTFPACK_PATH = settings.GLTFPACK_PATH
@@ -50,20 +52,17 @@ class BaseOps:
             Kind of operation, one of ['aV', 'GS'], by default 'aV'
         contrib_id : str, optional
             Contribution ID that triggered this operation
-
         """
         self.meshID = meshID
         self.mesh = mesh = Mesh.objects.get(ID=meshID)
         self.meshVID = mesh.verbose_id
         self.meshStr = f"{self.meshVID} <=> {self.meshID}"  # Used in logging
         self.contrib_id = contrib_id
-
         # Create new Run
         self.kind = kind
         self.run = run = Run.objects.create(mesh=mesh, kind=kind)
         run.save()  # Creates run directory
         self.runID = runID = run.ID
-
         # Ensure run.directory is relative path for new runs
         run_dir_path = Path(run.directory)
         if run_dir_path.is_absolute():
@@ -84,7 +83,6 @@ class BaseOps:
         cls.logger.info(
             f"ID {meshID} has Verbose ID (VID) {self.meshVID}. Using VID for logging."
         )
-
         # Get contribution object if contrib_id provided
         self.contribution = None
         if contrib_id:
@@ -188,7 +186,6 @@ class BaseOps:
         self.run.ended_at = timezone.now()
         self.run.save()
         self._update_run_status("Error")
-
         # Send email notification to admin about the failure
         try:
             from .email_utils import send_reconstruction_failure_email
@@ -239,7 +236,6 @@ class BaseOps:
                 f"Failed to send failure notification email: {email_error}",
                 exc_info=True,
             )
-
         raise excep
 
     def _update_mesh_status(self, status: str) -> None:
@@ -315,7 +311,9 @@ class BaseOps:
 
         """
         kind = self.kind
-        out_type = ".glb" if kind == "aV" else ".splat"  # Filetype of final output
+        out_map = {"aV": ".glb", "GS": ".splat", "Point": ".ply"}
+        out_type = out_map[kind]
+        # out_type = ".glb" if kind == "aV" else ".splat"  # Filetype of final output
         meshStr = self.meshStr
         curr_runID = self.runID
         arcDir = ARCHIVE_ROOT / self.meshID / f"{kind.lower()}cache" / self.runDir.stem
@@ -357,9 +355,14 @@ class BaseOps:
             self.logger.info(
                 f"Copying output for {kind} run {curr_runID} for mesh {meshStr}..."
             )
-            src = self.opt_path / (
-                "decimatedOptGLB.glb" if kind == "aV" else "postprocessed.splat"
-            )
+
+            out_file_mapper = {
+                "aV": "decimatedOptGLB.glb",
+                "GS": "postprocessed.splat",
+                "Point": "Point_Voxel.ply",
+            }
+            out_file = out_file_mapper[kind]
+            src = self.opt_path / out_file
             self.arkURL = (
                 f"models/{self.meshID}/published/{self.meshID}_{curr_runID}{out_type}"
             )
@@ -368,7 +371,6 @@ class BaseOps:
             self.logger.info(
                 f"Copied output for {kind} run {curr_runID} for mesh {meshStr}."
             )
-
             # 3. Move everything else to arcDir
             self.logger.info(
                 f"Archiving {kind} run {curr_runID} for mesh {meshStr} to {arcDir}."
@@ -744,18 +746,18 @@ class GSOps(BaseOps):
 
         # Create GS
         self.logger.info("Creating GS using Splatfacto...")
+        # NOTE: See https://docs.nerf.studio/nerfology/methods/splat.html#quality-and-regularization
         reg_opts = (
             # Slightly faster, but more memory intensive
             " --pipeline.datamanager.images-on-gpu True"
             # Higher degree for better quality
             + " --pipeline.model.sh-degree 3"
             # Threshold to delete translucent gaussians - lower values remove more (usually better quality)
-            + " --pipeline.model.cull_alpha_thresh="
+            " --pipeline.model.cull_alpha_thresh="
             + str(alpha_cull_thresh)
             # Less spiky Gaussians
             + " --pipeline.model.use_scale_regularization True"
         )
-
         cmd = (
             "ns-train splatfacto-big "
             + reg_opts
@@ -790,7 +792,6 @@ class GSOps(BaseOps):
             # + " --obb_rotation 0.0000000000 0.0000000000 0.0000000000"
             # + " --obb_scale 1.0000000000 1.0000000000 1.0000000000"
         )
-
         self._serialRunner(cmd, log_path)
         self.logger.info("Exported GS from Splatfacto.")
 
@@ -831,6 +832,54 @@ class GSOps(BaseOps):
         self.logger.info(f"Finished post-processing GS for {self.meshStr}.")
 
 
+class PointOps(BaseOps):
+    """
+    Runs the Gaussian splatting pipeline
+
+    """
+
+    def __init__(self, meshID: str) -> None:
+        super().__init__(meshID=meshID, kind="Point")
+        self.opt_path = ""
+        # Specify the run order (else alphabetical order)
+        self._run_order = [
+            "run_vggt",
+        ] + self._run_order_suffix
+
+    def run_vggt(self) -> None:
+        """
+        Creates PointCloud using VGGT
+        """
+        log_path = self.log_path / "VGGT.log"
+        output_path = self.runDir / "output/"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Full paths from settings
+        vggt_script = settings.VGGT_SCRIPT_PATH
+        vggt_env = settings.VGGT_ENV_PATH
+        venv_python = Path(vggt_env) / "bin/python"
+
+        if not venv_python.exists():
+            self._handle_error(
+                FileNotFoundError(f"Python not found in {venv_python}"), "run_vggt"
+            )
+
+        self.logger.info("Running VGGT pipeline...")
+
+        # Compose the command
+        cmd = f"{venv_python} {vggt_script} --image_dir {self.imageDir} --out_dir {output_path} --prediction_mode 'depth'"
+
+        self._serialRunner(cmd, log_path)
+
+        # Check for expected output file
+        expected_ply = output_path / "points.ply"
+        self._check_output(expected_ply, "run_vggt")
+
+        self.logger.info("Finished running VGGT pipeline.")
+
+        self.opt_path = output_path
+
+
 """
 Tasks
 
@@ -869,7 +918,6 @@ def prerun_check(contrib_id: str, recons_type: str) -> tuple[bool, str]:
             False,
             f"Not enough images to process mesh. Only {images_count} good images found.",
         )
-    # TODO: Uncomment after testing
     # if mesh.reconstructed_at and (contrib.processed_at < mesh.reconstructed_at):
     #     runs = mesh.runs.filter(status="Archived").order_by("-ended_at")
     #     if runs and (runs[0].kind == recons_type):
@@ -894,7 +942,8 @@ def ops_runner(contrib_id: str, kind: str) -> None:
         Options: 'aV' (AliceVision) or 'GS' (Gaussian Splatting)
 
     """
-    OP = MeshOps if kind == "aV" else GSOps
+    ops_map = {"aV": MeshOps, "GS": GSOps, "Point": PointOps}
+    OP = ops_map[kind]
     op_name = OP.__name__
 
     contrib = Contribution.objects.get(ID=contrib_id)
@@ -911,12 +960,11 @@ def ops_runner(contrib_id: str, kind: str) -> None:
     )
 
     try:
-        op = OP(meshID=meshID, contrib_id=contrib_id)
+        op = OP(meshID=meshID)
         cons.print(f"Check {op.log_path} for more details.")
 
         # Store start time for calculating processing duration
         start_time = datetime.now()
-
         op._run_all()
 
         # Calculate processing duration

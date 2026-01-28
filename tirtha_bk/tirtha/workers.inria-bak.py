@@ -26,7 +26,6 @@ from django.utils import timezone
 # from nn_models.MANIQA.batch_predict import MANIQAScore  # Local import # FIXME: TODO: Uncomment once fixed.
 # from nsfw_detector import predict  # Local package installation # FIXME: TODO: Uncomment once fixed.
 from rich.console import Console
-from silence_tensorflow import silence_tensorflow  # To suppress TF warnings
 
 # FIXME: TODO: Uncomment once fixed.
 # os.environ[
@@ -302,7 +301,7 @@ class MeshOps:
                 verboseLevel="trace" if mesh.status == "Error" else "info",
                 logger=MeshOps.av_logger,
             )
-        except Exception as e:
+        except Exception:
             self._handle_error(
                 Exception(f"aliceVision worker failed for mesh {meshStr}."),
                 "aliceVision",
@@ -339,7 +338,7 @@ class MeshOps:
                 f"Finished running aliceVision pipeline for mesh {meshStr}."
             )
 
-        except Exception as e:
+        except Exception:
             self._handle_error(
                 Exception(f"aliceVision pipeline failed for mesh {meshStr}."),
                 "aliceVision",
@@ -370,7 +369,7 @@ class MeshOps:
         inp = self.textured_path / "texturedDecimatedMesh/texturedMesh.obj"
         out = out_path / "decimatedGLB.glb"
         cmd = cmd_init + f"{inp} -o {out} {opts}"
-        log_path = out_path / f"obj2gltf.log"
+        log_path = out_path / "obj2gltf.log"
         self.logger.info(f"Running obj2gltf for mesh {self.meshStr}.")
         self.logger.info(f"Command: {cmd}")
         self._serialRunner(cmd, log_path)
@@ -422,7 +421,7 @@ class MeshOps:
         inp = self.glb_path / "decimatedGLB.glb"
         out = out_path / "decimatedOptGLB.glb"
         cmd = cmd_init + f"{inp} -o {out} {opts}"
-        log_path = out_path / f"meshopt.log"
+        log_path = out_path / "meshopt.log"
         self.logger.info(f"Running meshopt (gltfpack) for mesh {self.meshStr}.")
         self.logger.info(f"Commands: {cmd}")
         self._serialRunner(cmd, log_path)
@@ -710,7 +709,7 @@ class ImageOps:
 
             # FIXME: TODO: Remove (till `continue`) once fixed
             # Skip & move image to good folder
-            _update_image(img, "good", f"PASS -- SKIPPED")
+            _update_image(img, "good", "PASS -- SKIPPED")
             continue
 
             # Content safety check
@@ -1112,7 +1111,7 @@ class GSOps:
             self.logger.info(
                 f"Copying .splat for GS run {curr_runID} for mesh {meshStr}..."
             )
-            src = self.runDir / f"output/filtered/filtered.splat"
+            src = self.runDir / "output/filtered/filtered.splat"
             self.arkURL = (
                 f"models/{self.meshID}/published/{self.meshID}_{curr_runID}.splat"
             )
@@ -1245,17 +1244,17 @@ class GSOps:
         output_path = self.runDir / "output/"
 
         # colmap command
-        cmd_init = f"ns-process-data images --data "
+        cmd_init = "ns-process-data images --data "
         opts = " --output-dir "
         cmd = cmd_init + str(self.imageDir) + f"{opts}" + str(output_path)
-        log_path = self.log_path / f"splatfacto_colmap.log"
+        log_path = self.log_path / "splatfacto_colmap.log"
 
-        self.logger.info(f"Running colamap by splatfacto.")
-        self.logger.info(f"Command: {cmd}")
+        self.logger.info("Running colamap by splatfacto.")
+        self.logger.info("Command: {cmd}")
         self._serialRunner(cmd, log_path)
 
         train_inp = "ns-train splatfacto --data "
-        log_path = self.log_path / f"splatfacto_train.log"
+        log_path = self.log_path / "splatfacto_train.log"
         cmd = (
             train_inp
             + str(output_path)
