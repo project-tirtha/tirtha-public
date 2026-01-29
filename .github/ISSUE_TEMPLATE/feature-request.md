@@ -19,4 +19,4 @@ labels: enhancement
 <!-- Optional; Link to resources or a pull request -->
 
 ### Self-check
-- [ ] I have checked [smlab-niser/tirtha-public](https://github.com/smlab-niser/tirtha-public/issues) and could not find any related open or closed feature request.
+- [ ] I have checked [project-tirtha/tirtha-public](https://github.com/project-tirtha/tirtha-public/issues) and could not find any related open or closed feature request.

@@ -25,17 +25,22 @@ db.sqlite3
 local_settings.py
 gunicorn.conf.py
 local_tasks.py
-celerybeat-schedule
+celerybeat-schedule*
 leaderboard.*
 
 # venv + local
 db*
 tdenv/
 venv/
-bk/
+bk*/
 local/
 todo.md
 *.log
 cert/
 artifacts/
 tests/
+restore/
+
+# Related to Competitions
+comp-*
+comp_*

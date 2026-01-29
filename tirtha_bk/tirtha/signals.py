@@ -50,6 +50,23 @@ def post_migrate_create_defaults(sender, **kwargs):
         source = STATIC / f"{mesh_ID}"
         fname = f"{mesh_ID}__default.glb"
         src = source / f"{fname}"
+        
+        # Check if fname file exists at src
+        # If not, download it from https://smlab.niser.ac.in/project/tirtha/static/artifacts/9zpT9kVZwP9XxAbG__default.glb
+        if not src.exists():
+            try:
+                import requests
+
+                url = "https://smlab.niser.ac.in/project/tirtha/static/artifacts/9zpT9kVZwP9XxAbG__default.glb"
+                response = requests.get(url)
+                response.raise_for_status()  # Raise an error for bad responses
+                with open(src, "wb") as f:
+                    f.write(response.content)
+                logger.info(f"Downloaded default mesh file to {src}")
+            except Exception as e:
+                logger.error(f"Failed to download default mesh file: {e}")
+                return  # Exit the function if download fails
+        
         dest = STATIC / f"models/{mesh_ID}/published/{fname}"
         shutil.copy2(src, dest)
 

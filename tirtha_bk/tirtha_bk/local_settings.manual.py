@@ -66,8 +66,8 @@ NFS_DIR = os.getenv(  # Long term storage for old runs # CHANGEME: Does not need
 )
 ARCHIVE_ROOT = f"{NFS_DIR}archives"
 LOG_DIR = f"{PROD_DIR}logs"
-LOG_LOCATION = LOG_DIR + "/tirthaDjango.log"
-ADMIN_LOG_LOCATION = LOG_DIR + "/tirthaAdminDjango.log"
+LOG_LOCATION = LOG_DIR + "/django.log"
+ADMIN_LOG_LOCATION = LOG_DIR + "/admin.log"
 
 # Static files
 STATICFILES_DIRS = [

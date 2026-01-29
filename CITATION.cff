@@ -18,7 +18,7 @@ identifiers:
   - type: doi
     value: 10.1145/3611314.3615904
     description: Conference Paper
-repository-code: 'https://github.com/smlab-niser/tirtha-public'
+repository-code: 'https://github.com/project-tirtha/tirtha-public'
 url: 'https://smlab.niser.ac.in/project/tirtha/'
 keywords:
   - open source

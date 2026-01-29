@@ -10,7 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
-from .local_settings import *
+import os
+
+# Load developer-local settings, when TIRTHA_DEV=1 is set in the environment.
+# To allow running a quick dev environment (SQLite, DEBUG=True) without
+# changing production-local settings.
+if os.getenv("TIRTHA_DEV", "") == "1":
+    from .local_settings_dev import *
+else:
+    from .local_settings import *
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
@@ -34,21 +42,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "tirtha_bk.wsgi.application"
-
-# Application definition
-INSTALLED_APPS = [
-    "tirtha.apps.TirthaConfig",
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    "django_cleanup.apps.CleanupConfig",  # For cleaning up orphaned files in media
-    "django_extensions",
-    "dbbackup",  # django-dbbackup
-    "authlib",  # Include Authlib for OAuth integration
-]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators

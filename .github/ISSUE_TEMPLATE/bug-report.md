@@ -25,4 +25,4 @@ labels: bug
 <!-- Optional; Add any other context about the problem here. -->
 
 ### Self-check
-- [ ] I have checked [tirtha-public/issues](https://github.com/smlab-niser/tirtha-public/issues) and could not find any related open bug report.
+- [ ] I have checked [tirtha-public/issues](https://github.com/project-tirtha/tirtha-public/issues) and could not find any related open bug report.

@@ -36,11 +36,6 @@ if [ ! -f "./requirements.txt" ]; then
   exit
 fi
 
-if [ ! -f "./requirements.frontend.txt" ]; then
-  echo "Please make sure requirements.frontend.txt exists in ./tirtha-public/."
-  exit
-fi
-
 # Checking if the tirtha.env file has the required environment variables
 # if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PWD" ] || [ -z "$RMQ_USER" ] || [ -z "$RMQ_PWD" ] || [ -z "$RMQ_VHOST" ] || [ -z "$DJANGO_SUPERUSER_NAME" ] || [ -z "$DJANGO_SUPERUSER_EMAIL" ] || [ -z "$DJANGO_SUPERUSER_PASSWORD" ] || [ -z "$GUNICORN_PORT" ]
 #   then echo "Please set the required environment variables in the tirtha.env file."
@@ -61,6 +56,7 @@ apt-get update \
     tmux \
     wget \
     unzip \
+    ffmpeg \
     libopencv-dev \
     nginx \
     rabbitmq-server \
@@ -70,8 +66,9 @@ apt-get update \
     python3.11-dev \
     python3.11-venv \
     python3-pip
+    
 
-# Getting submodules for ImageOps models - Must be run as the user (not root)
+# Getting submodules - Must be run as the user (not root)
 # CHANGEME: NOTE: Comment out to skip ImageOps models
 sudo -u $SUDO_USER bash - <<EOF
   git config --global http.postBuffer 524288000
@@ -79,7 +76,6 @@ sudo -u $SUDO_USER bash - <<EOF
 EOF
 
 # Creating a Python virtual environment and installing dependencies
-# CHANGEME: NOTE: Use `requirements.frontend.txt` if developing only for the frontend
 python3.11 -m venv venv \
   && chown -R $SUDO_USER:$SUDO_USER ./venv/ \
   && source ./venv/bin/activate \
