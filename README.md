@@ -156,19 +156,3 @@ We also thank Odisha State Archaeology for their support.
 [Subhankar Mishra's Lab](https://www.niser.ac.in/~smishra/),
 [School of Computer Sciences](https://www.niser.ac.in/scos/), [NISER](https://www.niser.ac.in/).
 All rights reserved.
-
-**Generating Database Statistics**
-
-- **Command:** Run the Django management command to generate a JSON snapshot of DB statistics:
-
-```bash
-python manage.py generate_stats --output-dir /path/to/output
-```
-
-- **Default output:** If `--output-dir` is not provided, the command writes to `/tmp/tirtha_stats` or `settings.STATS_OUTPUT_DIR` if set.
-
-- **What it computes:** totals for meshes, contributors, contributions, images, runs and ARKs; per-country/state mesh counts; runs by status and average run duration; image counts per mesh; top contributors by image uploads; basic monthly time-series for meshes and contributions (last 36 months).
-
-- **Heuristics & caveats:** profession inference is not implemented (no reliable `profession` field). Country is taken from `Mesh.country` where available. Any inferred metadata (e.g., from email domains) is low-confidence; do not publish inferred personal attributes without consent.
-
-See `tirtha_bk/tirtha/management/commands/generate_stats.py` for implementation and `tirtha_bk/tirtha/stats/queries.py` for the ORM queries.
