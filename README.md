@@ -41,8 +41,10 @@
 ---
 
 > [!important]
-> **Google Summer of Code aspirants**, please read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and then, go here for the project topics: https://docs.google.com/document/d/1p5UxgoKBhy5pQh3fXX00BftcmJxzxdFLOkrB3Hibfm4.
-
+> For **Google Summer of Code aspirants**:
+> 
+> We plan to apply to Google Summer of Code 2026 as an organization, but note that we are not yet accepted.
+> For now,  please go here for the expected project topics: https://docs.google.com/document/d/1p5UxgoKBhy5pQh3fXX00BftcmJxzxdFLOkrB3Hibfm4.
 
 ---
 
