@@ -54,9 +54,9 @@ However:
 
 ## Communication Guidelines
 
-- Use GitHub Issues for bugs and actionable work.
-- Use GitHub Discussions for open-ended questions and ideas.
-- Use the Matrix room for quick conversations and community interaction.
+- Use [GitHub Issues](https://github.com/project-tirtha/tirtha-public/issues) for reporting bugs and actionable work.
+- Use [GitHub Discussions](https://github.com/orgs/project-tirtha/discussions) for open-ended questions and ideas.
+- Use the [Matrix room](https://matrix.to/#/#tirtha:matrix.org) for quick conversations and community interaction.
 
 For community norms and behavior expectations, see [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md). Bottom line: Be patient and kind. Contributors span time zones, cultures, and experience levels. 
 
