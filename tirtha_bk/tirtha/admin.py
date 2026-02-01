@@ -1,17 +1,21 @@
+import os
+import re
+import time
+import shutil
+import tempfile
+import zipfile
+import threading
 import logging
+from datetime import datetime, timezone
+
+from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import mark_safe
 from django.utils.translation import ngettext
-
-import zipfile
-import os
-import shutil
-import tempfile
-from datetime import datetime, timezone
 from django.http import HttpResponse, Http404, StreamingHttpResponse
-from django import forms
+from django.shortcuts import redirect
 
 # Local imports
 from .models import ARK, Contribution, Contributor, Image, Mesh, Run
@@ -190,7 +194,11 @@ class MeshAdmin(admin.ModelAdmin):
             "Mesh Details",
             {
                 "fields": (
-                    ("ID", "verbose_id", "download_link",),
+                    (
+                        "ID",
+                        "verbose_id",
+                        "download_link",
+                    ),
                     ("created_at", "updated_at", "reconstructed_at"),
                     ("status", "completed", "hidden"),
                     ("name", "country", "state", "district"),
@@ -242,6 +250,7 @@ class MeshAdmin(admin.ModelAdmin):
             )
         ]
         return my_urls + urls
+
     def download_images_view(self, request, object_id):
         # Per-mesh download via admin link
         try:
@@ -253,7 +262,6 @@ class MeshAdmin(admin.ModelAdmin):
         contrib_qs = mesh.contributions.all()
         # reuse ContributionAdmin-like zipping logic but scoped to these contributions
         # Build an in-memory zip: contribid/<label>/file
-        import re
 
         def _sanitize(s: str) -> str:
             s = str(s)
@@ -275,12 +283,12 @@ class MeshAdmin(admin.ModelAdmin):
                 if not os.path.exists(img_path):
                     continue
                 label = img.label if img.label else "unknown"
-                arcname = os.path.join(str(contrib.ID), label, os.path.basename(img_path))
+                arcname = os.path.join(
+                    str(contrib.ID), label, os.path.basename(img_path)
+                )
                 file_tuples.append((img_path, arcname))
 
         # Write ZIP to temp file and wait for completion, then stream
-        import threading, tempfile, time
-
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
         tempf.close()
@@ -294,7 +302,9 @@ class MeshAdmin(admin.ModelAdmin):
                         try:
                             zf.write(src, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {src} to mesh zip {fname}")
+                            logging.exception(
+                                f"Error adding file {src} to mesh zip {fname}"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception(f"Error creating mesh zip {fname}")
@@ -321,7 +331,7 @@ class MeshAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(_stream(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             logging.info(
@@ -335,7 +345,9 @@ class MeshAdmin(admin.ModelAdmin):
     def download_link(self, obj):
         try:
             url = reverse("admin:tirtha_mesh_download_images", args=[obj.ID])
-            return mark_safe(f'<a class="button" href="{url}">Download All Contributions</a>')
+            return mark_safe(
+                f'<a class="button" href="{url}">Download All Contributions</a>'
+            )
         except Exception:
             return ""
 
@@ -349,15 +361,13 @@ class MeshAdmin(admin.ModelAdmin):
             self.message_user(request, "No meshes selected.", level=messages.WARNING)
             return
 
-        import re
-
         def _sanitize(s: str) -> str:
             s = str(s)
             s = re.sub(r"\s+", "_", s)
             s = re.sub(r"[^A-Za-z0-9_\-\.]+", "", s)
             return s
 
-        mesh_verboseids = [ _sanitize(m.verbose_id)[:50] for m in meshes ]
+        mesh_verboseids = [_sanitize(m.verbose_id)[:50] for m in meshes]
 
         if len(meshes) == 1:
             # single mesh: structure contribid/label/file
@@ -383,12 +393,15 @@ class MeshAdmin(admin.ModelAdmin):
                     label = img.label if img.label else "unknown"
                     if is_multi:
                         mesh_vid = _sanitize(mesh.verbose_id)[:50]
-                        arcname = os.path.join(mesh_vid, str(contrib.ID), label, os.path.basename(img_path))
+                        arcname = os.path.join(
+                            mesh_vid, str(contrib.ID), label, os.path.basename(img_path)
+                        )
                     else:
-                        arcname = os.path.join(str(contrib.ID), label, os.path.basename(img_path))
+                        arcname = os.path.join(
+                            str(contrib.ID), label, os.path.basename(img_path)
+                        )
                     file_tuples.append((img_path, arcname))
 
-        import threading, tempfile, time
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
         tempf.close()
@@ -401,7 +414,9 @@ class MeshAdmin(admin.ModelAdmin):
                         try:
                             zf.write(src, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {src} to mesh bulk zip {fname}")
+                            logging.exception(
+                                f"Error adding file {src} to mesh bulk zip {fname}"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception(f"Error creating mesh bulk zip {fname}")
@@ -426,11 +441,13 @@ class MeshAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(_stream(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             mesh_ids = [str(m.ID) for m in meshes]
-            logging.info(f"ADMIN MESH ZIP DOWNLOAD by {request.user} - meshes={mesh_ids} filename={fname}")
+            logging.info(
+                f"ADMIN MESH ZIP DOWNLOAD by {request.user} - meshes={mesh_ids} filename={fname}"
+            )
         except Exception:
             pass
 
@@ -627,7 +644,9 @@ class ContributionAdmin(admin.ModelAdmin):
         except Contribution.DoesNotExist:
             raise Http404("Contribution not found")
 
-        return self.download_images_zip(request, Contribution.objects.filter(ID=contrib.ID))
+        return self.download_images_zip(
+            request, Contribution.objects.filter(ID=contrib.ID)
+        )
 
     def download_link(self, obj):
         try:
@@ -732,8 +751,6 @@ class ContributionAdmin(admin.ModelAdmin):
             verboseid = "multiple"
 
         # Sanitize mesh_name and verboseid for filenames
-        import re
-
         def _sanitize(s: str) -> str:
             s = str(s)
             s = re.sub(r"\s+", "_", s)
@@ -763,12 +780,15 @@ class ContributionAdmin(admin.ModelAdmin):
                 label = img.label if img.label else "unknown"
                 if len(mesh_set) > 1:
                     mesh_vid = _sanitize(contrib.mesh.verbose_id)[:50]
-                    arcname = os.path.join(mesh_vid, str(contrib.ID), label, os.path.basename(img_path))
+                    arcname = os.path.join(
+                        mesh_vid, str(contrib.ID), label, os.path.basename(img_path)
+                    )
                 else:
-                    arcname = os.path.join(str(contrib.ID), label, os.path.basename(img_path))
+                    arcname = os.path.join(
+                        str(contrib.ID), label, os.path.basename(img_path)
+                    )
                 file_tuples.append((img_path, arcname))
 
-        import threading, tempfile, time
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
         tempf.close()
@@ -781,7 +801,9 @@ class ContributionAdmin(admin.ModelAdmin):
                         try:
                             zf.write(src, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {src} to contrib zip {fname}")
+                            logging.exception(
+                                f"Error adding file {src} to contrib zip {fname}"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception(f"Error creating contrib zip {fname}")
@@ -806,7 +828,7 @@ class ContributionAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(_stream(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             ids_list = [str(c.ID) for c in contribs]
@@ -819,7 +841,13 @@ class ContributionAdmin(admin.ModelAdmin):
 
         return resp
 
-    actions = [mark_processed, trigger_imageops, trigger_aVOps, trigger_GSOps, download_images_zip]
+    actions = [
+        mark_processed,
+        trigger_imageops,
+        trigger_aVOps,
+        trigger_GSOps,
+        download_images_zip,
+    ]
     readonly_fields = (
         "ID",
         "mesh",
@@ -1017,6 +1045,7 @@ class RunReplaceForm(forms.ModelForm):
         model = Run
         fields = []
 
+
 @admin.register(Run)
 class RunAdmin(admin.ModelAdmin):
     form = RunReplaceForm
@@ -1034,6 +1063,7 @@ class RunAdmin(admin.ModelAdmin):
     readonly_fields = (
         "ID",
         "ark",
+        "run_links",
         "mesh_id_verbose",
         "kind",
         "started_at",
@@ -1046,19 +1076,32 @@ class RunAdmin(admin.ModelAdmin):
     )
     fieldsets = (
         (
-            "Run Details",
+            "Run Metadata",
             {
                 "fields": (
-                    ("ID", "download_link", "replacement"),
-                    ("ark"),
-                    ("mesh_id_verbose"),
-                    ("kind"),
-                    ("status"),
-                    ("notes"),
+                    ("ID", "ark"),
+                    "mesh_id_verbose",
+                    "kind",
                     ("started_at", "ended_at"),
-                    ("directory"),
-                    ("image_count"),
-                    ("hidden"),
+                    "directory",
+                    "image_count",
+                    (
+                        "status",
+                        "hidden",
+                    ),
+                    "notes",
+                )
+            },
+        ),
+        (
+            "Editable / Viewer Settings",
+            {
+                "fields": (
+                    (
+                        "download_link",
+                        "run_links",
+                        "replacement",
+                    ),
                     # <model-viewer>'s orientation
                     (
                         "rotaZ",
@@ -1138,14 +1181,16 @@ class RunAdmin(admin.ModelAdmin):
 
         # Only allow replacement on Archived runs
         if run.status != "Archived":
-            self.message_user(request, "Replacement allowed only for Archived runs.", level=messages.ERROR)
+            self.message_user(
+                request,
+                "Replacement allowed only for Archived runs.",
+                level=messages.ERROR,
+            )
             from django.core.exceptions import PermissionDenied
 
             raise PermissionDenied
 
         mesh = run.mesh
-
-        import re
 
         def _sanitize(s: str) -> str:
             s = str(s)
@@ -1169,7 +1214,11 @@ class RunAdmin(admin.ModelAdmin):
                         files.append(os.path.join(root, f))
 
         if not files:
-            self.message_user(request, "No final published output found for this run.", level=messages.WARNING)
+            self.message_user(
+                request,
+                "No final published output found for this run.",
+                level=messages.WARNING,
+            )
             raise Http404("Published output not found")
 
         fname = f"{verboseid_s}_{str(run.ID)[:8]}.zip"
@@ -1182,8 +1231,6 @@ class RunAdmin(admin.ModelAdmin):
             except Exception:
                 arcname = os.path.basename(fp)
             file_tuples.append((fp, arcname))
-
-        import threading, tempfile, time
 
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
@@ -1198,7 +1245,9 @@ class RunAdmin(admin.ModelAdmin):
                         try:
                             zf.write(src, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {src} to published zip for run {run.ID}")
+                            logging.exception(
+                                f"Error adding file {src} to published zip for run {run.ID}"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception(f"Error creating published zip for run {run.ID}")
@@ -1223,7 +1272,7 @@ class RunAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(_stream(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             logging.info(
@@ -1242,8 +1291,6 @@ class RunAdmin(admin.ModelAdmin):
             raise Http404("Run not found")
 
         mesh = run.mesh
-
-        import re
 
         def _sanitize(s: str) -> str:
             s = str(s)
@@ -1273,7 +1320,9 @@ class RunAdmin(admin.ModelAdmin):
                 for f in filenames:
                     files.append(os.path.join(root, f))
         else:
-            self.message_user(request, "Run directory not found for this run.", level=messages.WARNING)
+            self.message_user(
+                request, "Run directory not found for this run.", level=messages.WARNING
+            )
             raise Http404("Run directory not found")
 
         fname = f"{verboseid_s}_full_{str(run.ID)[:8]}.zip"
@@ -1288,8 +1337,6 @@ class RunAdmin(admin.ModelAdmin):
             file_tuples.append((fp, arcname))
 
         # Stream ZIP by writing to a temp file in a background thread and reading while writing
-        import threading, tempfile, time
-
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
         tempf.close()
@@ -1303,7 +1350,9 @@ class RunAdmin(admin.ModelAdmin):
                         try:
                             zf.write(fp, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {fp} to zip for run {run.ID}")
+                            logging.exception(
+                                f"Error adding file {fp} to zip for run {run.ID}"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception(f"Error creating zip for run {run.ID}")
@@ -1330,7 +1379,7 @@ class RunAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(stream_file(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             logging.info(
@@ -1354,6 +1403,63 @@ class RunAdmin(admin.ModelAdmin):
 
     download_link.short_description = "Download Output"
 
+    def run_links(self, obj):
+        """
+        Render links for Runs.
+
+        - "Open on Site": shown for `GS` and `aV` runs; links to the Run (via `BASE_URL/<ark>`).
+        - "Edit in SuperSplat": shown only for `GS` runs; links to the .splat file.
+        Returns "N.A." for other run kinds.
+        """
+        try:
+            kind = getattr(obj, "kind", None)
+            if kind not in ("GS", "aV"):
+                return "N.A."
+
+            mesh = obj.mesh
+            # Use BASE_URL from settings as site base
+            base = (
+                settings.BASE_URL.rstrip("/")
+                if getattr(settings, "BASE_URL", None)
+                else ""
+            )
+
+            # Build run URL using the run's ARK
+            run_ark = getattr(obj, "ark", None)
+            run_url = (
+                f"{base}/{run_ark}"
+                if (base and run_ark)
+                else (f"/{run_ark}" if run_ark else "")
+            )
+
+            links = []
+            if run_url:
+                links.append(
+                    f'<a class="button" href="{run_url}" target="_blank" rel="noopener">Open on Site</a>'
+                )
+
+            # Add SuperSplat edit link only for GS runs
+            if kind == "GS":
+                ext = ".splat"
+                filename = f"{mesh.ID}_{obj.ID}{ext}"
+                splat_url = (
+                    f"{base}/static/models/{mesh.ID}/published/{filename}"
+                    if base
+                    else f"/static/models/{mesh.ID}/published/{filename}"
+                )
+                ss_url = f"https://superspl.at/editor?load={splat_url}"
+                links.append(
+                    f'<a class="button" href="{ss_url}" target="_blank" rel="noopener">Edit in SuperSplat</a>'
+                )
+
+            if not links:
+                return ""
+            return mark_safe("&nbsp;".join(links))
+        except Exception:
+            return ""
+
+    run_links.short_description = "View / Edit Output"
+
     # Replacement is handled via the change form
     def change_view(self, request, object_id, form_url="", extra_context=None):
         # If a replacement file was submitted via the change form, delegate
@@ -1373,7 +1479,9 @@ class RunAdmin(admin.ModelAdmin):
         try:
             # Work on a shallow copy of the configured fieldsets
             fsets = [
-                (title, dict(options)) if isinstance(options, dict) else (title, options)
+                (title, dict(options))
+                if isinstance(options, dict)
+                else (title, options)
                 for (title, options) in self.fieldsets
             ]
             if obj is None or getattr(obj, "status", None) != "Archived":
@@ -1392,15 +1500,15 @@ class RunAdmin(admin.ModelAdmin):
         except Exception:
             return self.fieldsets
 
-    @admin.action(description="Download final published outputs (compressed) for selected runs")
+    @admin.action(
+        description="Download final published outputs (compressed) for selected runs"
+    )
     def download_final_outputs(self, request, queryset):
         # Zips published output folders for selected runs (same logic as single-run published download)
         runs = list(queryset)
         if not runs:
             self.message_user(request, "No runs selected.", level=messages.WARNING)
             return
-
-        import re
 
         def _sanitize(s: str) -> str:
             s = str(s)
@@ -1444,7 +1552,6 @@ class RunAdmin(admin.ModelAdmin):
                         arcname = os.path.join(str(run.ID), os.path.basename(fp))
                     file_tuples.append((fp, arcname))
 
-        import threading, tempfile, time
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
         tempf.close()
@@ -1457,7 +1564,9 @@ class RunAdmin(admin.ModelAdmin):
                         try:
                             zf.write(src, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {src} to published bulk zip {fname}")
+                            logging.exception(
+                                f"Error adding file {src} to published bulk zip {fname}"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception(f"Error creating published bulk zip {fname}")
@@ -1482,11 +1591,13 @@ class RunAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(_stream(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             run_ids = [str(r.ID) for r in runs]
-            logging.info(f"ADMIN RUNS PUBLISHED DOWNLOAD by {request.user} - runs={run_ids} filename={fname}")
+            logging.info(
+                f"ADMIN RUNS PUBLISHED DOWNLOAD by {request.user} - runs={run_ids} filename={fname}"
+            )
         except Exception:
             pass
 
@@ -1494,18 +1605,22 @@ class RunAdmin(admin.ModelAdmin):
 
     def replace_output_view(self, request, object_id):
         """
-        Admin view to replace the final published output file for a Run. 
+        Admin view to replace the final published output file for a Run.
         Strictly enforces allowed upload types: .gltf/.glb for MeshOps and .splat for GSOps.
-        Replacement is performed by writing the upload to a temp file, moving the original 
-        file to a timestamped .bak, then atomically moving the temp file to the original filename. 
+        Replacement is performed by writing the upload to a temp file, moving the original
+        file to a timestamped .bak, then atomically moving the temp file to the original filename.
         Run.notes is updated only on success.
         # NOTE: Only staff users may perform this action.
-        
+
         """
         from django.core.exceptions import PermissionDenied
 
         if not (request.user.is_staff or request.user.is_superuser):
-            self.message_user(request, "Permission denied: staff or superuser only.", level=messages.ERROR)
+            self.message_user(
+                request,
+                "Permission denied: staff or superuser only.",
+                level=messages.ERROR,
+            )
             raise PermissionDenied
 
         try:
@@ -1535,17 +1650,21 @@ class RunAdmin(admin.ModelAdmin):
                     break
 
         if not existing_file:
-            self.message_user(request, "Published final output not found for this run.", level=messages.ERROR)
+            self.message_user(
+                request,
+                "Published final output not found for this run.",
+                level=messages.ERROR,
+            )
             raise Http404("Published output not found")
 
         if request.method == "GET":
             form_html = (
                 f"<h2>Replace final output for Run {run.ID}</h2>"
                 f"<p>Existing file: <strong>{existing_file}</strong></p>"
-                "<form method=\"post\" enctype=\"multipart/form-data\">"
+                '<form method="post" enctype="multipart/form-data">'
                 "%s"
-                "<input type=\"file\" name=\"replacement\" required>"
-                "<input type=\"submit\" value=\"Upload & Replace\">"
+                '<input type="file" name="replacement" required>'
+                '<input type="submit" value="Upload & Replace">'
                 "</form>"
             )
             from django.middleware.csrf import get_token
@@ -1565,16 +1684,26 @@ class RunAdmin(admin.ModelAdmin):
         # Strict file type enforcement
         if kind == "aV":
             if not (lower.endswith(".glb") or lower.endswith(".gltf")):
-                self.message_user(request, "For MeshOps runs, only .glb/.gltf uploads are allowed.", level=messages.ERROR)
+                self.message_user(
+                    request,
+                    "For MeshOps runs, only .glb/.gltf uploads are allowed.",
+                    level=messages.ERROR,
+                )
                 return HttpResponse(status=400)
         else:
             if not lower.endswith(".splat"):
-                self.message_user(request, "For GSOps runs, only .splat uploads are allowed.", level=messages.ERROR)
+                self.message_user(
+                    request,
+                    "For GSOps runs, only .splat uploads are allowed.",
+                    level=messages.ERROR,
+                )
                 return HttpResponse(status=400)
 
         orig_path = os.path.join(pub_dir, existing_file)
         if not os.path.isfile(orig_path):
-            self.message_user(request, "Original final output file missing.", level=messages.ERROR)
+            self.message_user(
+                request, "Original final output file missing.", level=messages.ERROR
+            )
             raise Http404("Original file missing")
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
@@ -1587,9 +1716,11 @@ class RunAdmin(admin.ModelAdmin):
                     tmpf.write(chunk)
                 tmpf.flush()
                 os.fsync(tmpf.fileno())
-        except Exception as e:
+        except Exception:
             logging.exception(f"Error saving uploaded temp file for run {run.ID}")
-            self.message_user(request, "Error saving uploaded file.", level=messages.ERROR)
+            self.message_user(
+                request, "Error saving uploaded file.", level=messages.ERROR
+            )
             return HttpResponse(status=500)
 
         backup_name = f"{existing_file}.{timestamp}.bak"
@@ -1610,7 +1741,7 @@ class RunAdmin(admin.ModelAdmin):
                 os.chmod(orig_path, 0o664)
             except Exception:
                 logging.exception(f"Failed to chmod replaced file {orig_path}")
-        except Exception as e:
+        except Exception:
             logging.exception(f"Error replacing final output for run {run.ID}")
             # Ensure temp file removed if exists
             try:
@@ -1618,7 +1749,11 @@ class RunAdmin(admin.ModelAdmin):
                     os.remove(tmp_path)
             except Exception:
                 pass
-            self.message_user(request, "Error performing replacement; original preserved as backup.", level=messages.ERROR)
+            self.message_user(
+                request,
+                "Error performing replacement; original preserved as backup.",
+                level=messages.ERROR,
+            )
             return HttpResponse(status=500)
 
         # Update Run.notes and log the admin action
@@ -1629,25 +1764,30 @@ class RunAdmin(admin.ModelAdmin):
             else:
                 run.notes = note
             run.save()
-            logging.info(f"ADMIN RUN OUTPUT REPLACED by {request.user} - run={run.ID} original={existing_file} backup={backup_name} time={timestamp}")
+            logging.info(
+                f"ADMIN RUN OUTPUT REPLACED by {request.user} - run={run.ID} original={existing_file} backup={backup_name} time={timestamp}"
+            )
         except Exception:
-            logging.exception(f"Error updating notes for run {run.ID} after replacement")
+            logging.exception(
+                f"Error updating notes for run {run.ID} after replacement"
+            )
 
-        self.message_user(request, "Final output successfully replaced.", level=messages.SUCCESS)
+        self.message_user(
+            request, "Final output successfully replaced.", level=messages.SUCCESS
+        )
         # Redirect back to change page
         change_url = reverse("admin:tirtha_run_change", args=[run.ID])
-        from django.shortcuts import redirect
 
         return redirect(change_url)
 
-    @admin.action(description="Download full run directories (compressed) for selected runs")
+    @admin.action(
+        description="Download full run directories (compressed) for selected runs"
+    )
     def download_full_runs(self, request, queryset):
         runs = list(queryset)
         if not runs:
             self.message_user(request, "No runs selected.", level=messages.WARNING)
             return
-
-        import re
 
         def _sanitize(s: str) -> str:
             s = str(s)
@@ -1706,13 +1846,13 @@ class RunAdmin(admin.ModelAdmin):
                         except Exception:
                             arcname = os.path.join(str(run.ID), os.path.basename(fp))
                         file_tuples.append((fp, arcname))
-            except Exception as e:
-                logging.exception(f"Error collecting files for run {run.ID} in bulk full-run action")
+            except Exception:
+                logging.exception(
+                    f"Error collecting files for run {run.ID} in bulk full-run action"
+                )
                 continue
 
         # Stream ZIP by writing to a temp file in a background thread
-        import threading, tempfile, time
-
         tempf = tempfile.NamedTemporaryFile(delete=False)
         tempf_name = tempf.name
         tempf.close()
@@ -1726,7 +1866,9 @@ class RunAdmin(admin.ModelAdmin):
                         try:
                             zf.write(fp, arc)
                         except Exception:
-                            logging.exception(f"Error adding file {fp} to zip in bulk full-run action")
+                            logging.exception(
+                                f"Error adding file {fp} to zip in bulk full-run action"
+                            )
                 writer_done.set()
             except Exception:
                 logging.exception("Error creating bulk full-runs zip")
@@ -1753,11 +1895,13 @@ class RunAdmin(admin.ModelAdmin):
                     pass
 
         resp = StreamingHttpResponse(stream_file(), content_type="application/zip")
-        resp["Content-Disposition"] = f'attachment; filename={fname}'
+        resp["Content-Disposition"] = f"attachment; filename={fname}"
 
         try:
             run_ids = [str(r.ID) for r in runs]
-            logging.info(f"ADMIN RUNS FULL DOWNLOAD by {request.user} - runs={run_ids} filename={fname}")
+            logging.info(
+                f"ADMIN RUNS FULL DOWNLOAD by {request.user} - runs={run_ids} filename={fname}"
+            )
         except Exception:
             pass
 
@@ -1800,15 +1944,15 @@ class ARKAdmin(admin.ModelAdmin):
             "ARK Details",
             {
                 "fields": (
-                    ("ark"),
-                    ("url"),
-                    ("created_at"),
-                    ("get_run"),
-                    ("mesh_id_verbose"),
-                    ("image_count"),
+                    "ark",
+                    "url",
+                    "created_at",
+                    "get_run",
+                    "mesh_id_verbose",
+                    "image_count",
                     ("naan", "shoulder", "assigned_name"),
-                    ("metadata"),
-                    ("commitment"),
+                    "metadata",
+                    "commitment",
                 )
             },
         ),

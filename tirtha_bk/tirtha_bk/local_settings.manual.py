@@ -11,8 +11,6 @@ from django.core.management.utils import get_random_secret_key
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")  # CHANGEME: NOTE: Keep this secret
 SECRET_KEY = SECRET_KEY if SECRET_KEY else get_random_secret_key()
-VGGT_SCRIPT_PATH = './tirtha/run_vggt.py'
-VGGT_ENV_PATH = '../.venv'
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")  # CHANGEME:
 
 # SECURITY WARNING: do not run with debug turned on in production!
@@ -169,6 +167,10 @@ ALPHA_CULL_THRESH = float(
 )  # Threshold to delete translucent gaussians - lower values remove more (usually better quality)
 MIN_MATCHED_IMAGES = int(os.getenv("MIN_MATCHED_IMAGES", "5"))
 MIN_MATCH_RATIO = float(os.getenv("MIN_MATCH_RATIO", "0.10"))
+
+# VGGT
+VGGT_SCRIPT_PATH = './tirtha/run_vggt.py'
+VGGT_ENV_PATH = '../.venv'
 
 # MR
 # NOTE: Defaulting to Meshroom 2021 for now. 2023/25 will require further changes

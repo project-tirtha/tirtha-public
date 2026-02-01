@@ -1,11 +1,12 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file here: https://github.com/facebookresearch/vggt/blob/main/LICENSE.txt
-
-
 """
+Copyright (c) Meta Platforms, Inc. and affiliates.
+All rights reserved.
+
+This source code is licensed under the license found in the
+LICENSE file here: https://github.com/facebookresearch/vggt/blob/main/LICENSE.txt
+
+---
+
 VGGT Runner Script
 =================
 
@@ -24,7 +25,7 @@ Output:
     │   ├── cameras.bin   # Camera parameters (COLMAP format)
     │   ├── images.bin    # Pose for each image (COLMAP format)
     │   ├── points3D.bin  # 3D points (COLMAP format)
-    │   └── points.ply    # Point cloud visualization file 
+    │   └── points.ply    # Point cloud visualization file
     └── visuals/          # Visualization outputs TODO
 
 Key Features
@@ -32,8 +33,8 @@ Key Features
 • Dual-mode Support: Run reconstructions using either VGGT or VGGT+BA
 • Resolution Preservation: Maintains original image resolution in camera parameters and tracks
 • COLMAP Compatibility: Exports results in standard COLMAP sparse reconstruction format
-"""
 
+"""
 
 import random
 import numpy as np
@@ -59,7 +60,10 @@ from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 from vggt.utils.geometry import unproject_depth_map_to_point_map
 from vggt.utils.helper import create_pixel_coordinate_grid, randomly_limit_trues
 from vggt.dependency.track_predict import predict_tracks
-from vggt.dependency.np_to_pycolmap import batch_np_matrix_to_pycolmap, batch_np_matrix_to_pycolmap_wo_track
+from vggt.dependency.np_to_pycolmap import (
+    batch_np_matrix_to_pycolmap,
+    batch_np_matrix_to_pycolmap_wo_track,
+)
 
 
 # TODO: add support for masks
@@ -71,25 +75,70 @@ from vggt.dependency.np_to_pycolmap import batch_np_matrix_to_pycolmap, batch_np
 
 def parse_args():
     parser = argparse.ArgumentParser(description="VGGT Demo")
-    parser.add_argument("--scene_dir", type=str, required=True, help="Directory containing the scene images")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--use_ba", action="store_true", default=False, help="Use BA for reconstruction")
-    parser.add_argument("--prediction_mode", type=str, default="depth", choices=["depth", "point"], help="Prediction mode: 'depth' or 'point'")
-    parser.add_argument("--out_dir", type=str, default=None, help="Output directory for sparse reconstruction (defaults to scene_dir/sparse)")
+    parser.add_argument(
+        "--scene_dir",
+        type=str,
+        required=True,
+        help="Directory containing the scene images",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for reproducibility"
+    )
+    parser.add_argument(
+        "--use_ba", action="store_true", default=False, help="Use BA for reconstruction"
+    )
+    parser.add_argument(
+        "--prediction_mode",
+        type=str,
+        default="depth",
+        choices=["depth", "point"],
+        help="Prediction mode: 'depth' or 'point'",
+    )
+    parser.add_argument(
+        "--out_dir",
+        type=str,
+        default=None,
+        help="Output directory for sparse reconstruction (defaults to scene_dir/sparse)",
+    )
     ######### BA parameters #########
     parser.add_argument(
-        "--max_reproj_error", type=float, default=8.0, help="Maximum reprojection error for reconstruction"
-    )
-    parser.add_argument("--shared_camera", action="store_true", default=False, help="Use shared camera for all images")
-    parser.add_argument("--camera_type", type=str, default="SIMPLE_PINHOLE", help="Camera type for reconstruction")
-    parser.add_argument("--vis_thresh", type=float, default=0.2, help="Visibility threshold for tracks")
-    parser.add_argument("--query_frame_num", type=int, default=8, help="Number of frames to query")
-    parser.add_argument("--max_query_pts", type=int, default=4096, help="Maximum number of query points")
-    parser.add_argument(
-        "--fine_tracking", action="store_true", default=True, help="Use fine tracking (slower but more accurate)"
+        "--max_reproj_error",
+        type=float,
+        default=8.0,
+        help="Maximum reprojection error for reconstruction",
     )
     parser.add_argument(
-        "--conf_thres_value", type=float, default=5.0, help="Confidence threshold value for depth filtering (wo BA)"
+        "--shared_camera",
+        action="store_true",
+        default=False,
+        help="Use shared camera for all images",
+    )
+    parser.add_argument(
+        "--camera_type",
+        type=str,
+        default="SIMPLE_PINHOLE",
+        help="Camera type for reconstruction",
+    )
+    parser.add_argument(
+        "--vis_thresh", type=float, default=0.2, help="Visibility threshold for tracks"
+    )
+    parser.add_argument(
+        "--query_frame_num", type=int, default=8, help="Number of frames to query"
+    )
+    parser.add_argument(
+        "--max_query_pts", type=int, default=4096, help="Maximum number of query points"
+    )
+    parser.add_argument(
+        "--fine_tracking",
+        action="store_true",
+        default=True,
+        help="Use fine tracking (slower but more accurate)",
+    )
+    parser.add_argument(
+        "--conf_thres_value",
+        type=float,
+        default=5.0,
+        help="Confidence threshold value for depth filtering (wo BA)",
     )
     return parser.parse_args()
 
@@ -101,7 +150,9 @@ def run_VGGT(model, images, dtype, prediction_mode="depth", resolution=518):
     assert images.shape[1] == 3
 
     # hard-coded to use 518 for VGGT
-    images = F.interpolate(images, size=(resolution, resolution), mode="bilinear", align_corners=False)
+    images = F.interpolate(
+        images, size=(resolution, resolution), mode="bilinear", align_corners=False
+    )
 
     with torch.no_grad():
         with torch.cuda.amp.autocast(dtype=dtype):
@@ -114,16 +165,18 @@ def run_VGGT(model, images, dtype, prediction_mode="depth", resolution=518):
         extrinsic, intrinsic = pose_encoding_to_extri_intri(pose_enc, images.shape[-2:])
         # Predict Depth Maps
         depth_map, depth_conf = model.depth_head(aggregated_tokens_list, images, ps_idx)
-        
+
         if prediction_mode == "point":
             try:
-                point_map, point_conf = model.point_head(aggregated_tokens_list, images, ps_idx)
+                point_map, point_conf = model.point_head(
+                    aggregated_tokens_list, images, ps_idx
+                )
             except AttributeError:
                 print("ERROR! No point map method available")
                 point_map, point_conf = None, None
         else:
             point_map, point_conf = None, None
-            
+
     extrinsic = extrinsic.squeeze(0).cpu().numpy()
     intrinsic = intrinsic.squeeze(0).cpu().numpy()
     depth_map = depth_map.squeeze(0).cpu().numpy()
@@ -145,7 +198,9 @@ def demo_fn(args):
     print(f"Setting seed as: {args.seed}")
 
     # Set device and dtype
-    dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    dtype = (
+        torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    )
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
     print(f"Using dtype: {dtype}")
@@ -170,14 +225,18 @@ def demo_fn(args):
     vggt_fixed_resolution = 518
     img_load_resolution = 1024
 
-    images, original_coords = load_and_preprocess_images_square(image_path_list, img_load_resolution)
+    images, original_coords = load_and_preprocess_images_square(
+        image_path_list, img_load_resolution
+    )
     images = images.to(device)
     original_coords = original_coords.to(device)
     print(f"Loaded {len(images)} images from {image_dir}")
 
     # Run VGGT to estimate camera and depth
     # Run with 518x518 images
-    extrinsic, intrinsic, depth_map, depth_conf, point_map, point_conf = run_VGGT(model, images, dtype, args.prediction_mode, vggt_fixed_resolution)
+    extrinsic, intrinsic, depth_map, depth_conf, point_map, point_conf = run_VGGT(
+        model, images, dtype, args.prediction_mode, vggt_fixed_resolution
+    )
     points_3d = unproject_depth_map_to_point_map(depth_map, extrinsic, intrinsic)
 
     if args.use_ba:
@@ -193,15 +252,17 @@ def demo_fn(args):
 
             # You can also change the pred_tracks to tracks from any other methods
             # e.g., from COLMAP, from CoTracker, or by chaining 2D matches from Lightglue/LoFTR.
-            pred_tracks, pred_vis_scores, pred_confs, points_3d, points_rgb = predict_tracks(
-                images,
-                conf=depth_conf,
-                points_3d=points_3d,
-                masks=None,
-                max_query_pts=args.max_query_pts,
-                query_frame_num=args.query_frame_num,
-                keypoint_extractor="aliked+sp",
-                fine_tracking=args.fine_tracking,
+            pred_tracks, pred_vis_scores, pred_confs, points_3d, points_rgb = (
+                predict_tracks(
+                    images,
+                    conf=depth_conf,
+                    points_3d=points_3d,
+                    masks=None,
+                    max_query_pts=args.max_query_pts,
+                    query_frame_num=args.query_frame_num,
+                    keypoint_extractor="aliked+sp",
+                    fine_tracking=args.fine_tracking,
+                )
             )
 
             torch.cuda.empty_cache()
@@ -235,14 +296,21 @@ def demo_fn(args):
     else:
         conf_thres_value = args.conf_thres_value
         max_points_for_colmap = 100000  # randomly sample 3D points
-        shared_camera = False  # in the feedforward manner, we do not support shared camera
-        camera_type = "PINHOLE"  # in the feedforward manner, we only support PINHOLE camera
+        shared_camera = (
+            False  # in the feedforward manner, we do not support shared camera
+        )
+        camera_type = (
+            "PINHOLE"  # in the feedforward manner, we only support PINHOLE camera
+        )
 
         image_size = np.array([vggt_fixed_resolution, vggt_fixed_resolution])
         num_frames, height, width, _ = points_3d.shape
 
         points_rgb = F.interpolate(
-            images, size=(vggt_fixed_resolution, vggt_fixed_resolution), mode="bilinear", align_corners=False
+            images,
+            size=(vggt_fixed_resolution, vggt_fixed_resolution),
+            mode="bilinear",
+            align_corners=False,
         )
         points_rgb = (points_rgb.cpu().numpy() * 255).astype(np.uint8)
         points_rgb = points_rgb.transpose(0, 2, 3, 1)
@@ -286,19 +354,26 @@ def demo_fn(args):
         sparse_reconstruction_dir = os.path.join(args.scene_dir, "sparse")
     else:
         sparse_reconstruction_dir = args.out_dir
-        
+
     print(f"Saving reconstruction to {sparse_reconstruction_dir}")
     os.makedirs(sparse_reconstruction_dir, exist_ok=True)
     reconstruction.write(sparse_reconstruction_dir)
 
     # Save point cloud for fast visualization
-    trimesh.PointCloud(points_3d, colors=points_rgb).export(os.path.join(sparse_reconstruction_dir, "points.ply"))
+    trimesh.PointCloud(points_3d, colors=points_rgb).export(
+        os.path.join(sparse_reconstruction_dir, "points.ply")
+    )
 
     return True
 
 
 def rename_colmap_recons_and_rescale_camera(
-    reconstruction, image_paths, original_coords, img_size, shift_point2d_to_original_res=False, shared_camera=False
+    reconstruction,
+    image_paths,
+    original_coords,
+    img_size,
+    shift_point2d_to_original_res=False,
+    shared_camera=False,
 ):
     rescale_camera = True
 
