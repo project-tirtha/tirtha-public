@@ -131,7 +131,7 @@ When opening an issue:
 ## Google Summer of Code (GSoC) 2026
 
 > [!important]
-> Make sure to read the [LLM / AI Tool Usage](#llm--ai-tool-usage-policy) and [Communication](#communication) sections. Then, read the project ideas document linked in the [README](./README.md) before engaging.
+> Make sure to read the [LLM / AI Tool Usage](#llm--ai-tool-usage-policy) and [Communication Guidelines](#communication-guidelines) sections. Then, read the project ideas document linked in the [README](./README.md) before engaging.
 
 We actively welcome GSoC 2026 contributors.
 
