@@ -384,6 +384,7 @@ class Run(models.Model):
     status_options = [
         ("Processing", "Processing"),
         ("Error", "Error"),
+        ("Manual", "Manual"),
         ("Archived", "Archived"),
         (
             "Cancelled",

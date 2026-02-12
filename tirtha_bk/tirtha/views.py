@@ -8,7 +8,7 @@ import uuid
 import logging
 
 from django.conf import settings
-from django.db.models import Q, Max
+from django.db.models import Q, Max, F
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
@@ -118,7 +118,7 @@ def _get_mesh_context(mesh: Mesh, run: Run = None) -> Dict:
 
     if run:
         runs_arks = list(
-            mesh.runs.filter(status="Archived")
+            mesh.runs.filter(status__in=("Archived", "Manual"))
             .order_by("-ended_at")
             .values_list("ark", "ended_at")
         )
@@ -155,7 +155,7 @@ def index(request, vid: str = None, runid: str = None):
     meshes = (
         Mesh.objects.exclude(hidden=True)
         .annotate(latest_run=Max("runs__ended_at", filter=Q(runs__hidden=False)))
-        .order_by("latest_run")
+        .order_by(F("latest_run").desc(nulls_last=True))
     )
 
     # Base context
@@ -191,9 +191,11 @@ def index(request, vid: str = None, runid: str = None):
             else:
                 mesh = Mesh.objects.get(ID=settings.DEFAULT_MESH_ID)
 
-            # Try to get latest archived run
+            # Try to get latest archived or manual run
             try:
-                run = mesh.runs.filter(status="Archived").latest("ended_at")
+                run = mesh.runs.filter(status__in=("Archived", "Manual")).latest(
+                    "ended_at"
+                )
                 if run.hidden or run.mesh.hidden:
                     logging.warning(f"Attempt to access hidden Run or Mesh: {run.ID}")
                     raise Run.DoesNotExist("Run or Mesh is hidden.")
@@ -221,6 +223,7 @@ def index(request, vid: str = None, runid: str = None):
                 context["signin_class"] = ""
 
     return render(request, template, context)
+
 
 @require_GET
 def signin(request):
