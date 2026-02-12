@@ -59,13 +59,13 @@ This project is fully open-source under the [GNU Affero General Public License v
 For academic use, see [Citation](#citation) for information on how to cite this project. A [CITATION.cff](./CITATION.cff) file is also available in the repository.
 
 #### Stats Since Inception (2023 —)
-- **Heritage Sites Documented:** 59
-- **Unique Contributors:** 63
-- **Contributions:** 110
-- **Images:** 14,871
-- **Reconstructions:** 71
-  - Photogrammetry: 34
-  - Gaussian Splatting: 37
+- **Heritage Sites Documented:** 60
+- **Unique Contributors:** 69
+- **Contributions:** 136
+- **Images:** 19,299
+- **Reconstructions:** 82
+    - Photogrammetry: 34
+    - Gaussian Splatting: 48
 
 
 ## System Architecture
