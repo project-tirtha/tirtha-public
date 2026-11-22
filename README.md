@@ -40,14 +40,6 @@
 
 ---
 
-> [!important]
-> For **Google Summer of Code aspirants**:
-> 
-> We plan to apply to Google Summer of Code 2026 as an organization, but note that we are not yet accepted.
-> For now,  please go here for the expected project topics: https://docs.google.com/document/d/1p5UxgoKBhy5pQh3fXX00BftcmJxzxdFLOkrB3Hibfm4.
-
----
-
 [Project Tirtha](https://smlab.niser.ac.in/project/tirtha/) is an _academic initiative_ dedicated to creating 3D models of cultural heritage sites using crowdsourced images. The word _Tirtha_ is Sanskrit for "a place of pilgrimage" and is commonly used to refer to the sacred sites of Hinduism, Jainism, and Buddhism.
 
 Our goal is to preserve and showcase the beauty and cultural significance of heritage sites around the world. By enabling the general public to contribute images and by providing open access to the resulting 3D models, we aim to increase awareness and appreciation of these invaluable cultural landmarks. We believe this participatory approach can inspire future generations to protect and maintain them for years to come.
@@ -58,14 +50,16 @@ This project is fully open-source under the [GNU Affero General Public License v
 
 For academic use, see [Citation](#citation) for information on how to cite this project. A [CITATION.cff](./CITATION.cff) file is also available in the repository.
 
-#### Stats Since Inception (2023 —)
-- **Heritage Sites Documented:** 60
-- **Unique Contributors:** 69
-- **Contributions:** 136
-- **Images:** 19,299
-- **Reconstructions:** 82
-    - Photogrammetry: 34
-    - Gaussian Splatting: 48
+Current statistics (sites, contributors, images and reconstructions) are shown on the [Tirtha website](https://smlab.niser.ac.in/project/tirtha/).
+
+
+## Current Stack
+
+- **Backend:** Django 5.2 (a single `tirtha` app), Celery workers on two queues (`ingest` for uploads and image checks, `recon` for reconstruction), PostgreSQL and RabbitMQ in production, SQLite with eager Celery for development and tests.
+- **Reconstruction:** COLMAP for structure-from-motion and [FastGS](https://github.com/fastgs/FastGS) for Gaussian Splatting, run in its own environment. Splats are compressed for the web with [splat-transform](https://github.com/playcanvas/splat-transform). The AliceVision photogrammetry path is kept for meshes. The Django-free reconstruction code lives in a sibling repository, [`tirtha-recon`](https://github.com/project-tirtha/tirtha-recon).
+- **Image checks:** [NudeNet](https://github.com/notAI-tech/NudeNet) for content safety on CPU, plus sharpness and exposure measurements.
+- **Frontend:** React 19 + Vite + Tailwind, [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) for the map, and a Gaussian-splat viewer built on three.js ([GaussianSplats3D](https://github.com/mkkellogg/GaussianSplats3D)) with KTX2/[Basis Universal](https://github.com/BinomialLLC/basis_universal) textures. Available in English, Odia and Hindi.
+- **Identifiers:** every published model gets an [ARK](https://arks.org/) persistent identifier.
 
 
 ## System Architecture
@@ -80,12 +74,12 @@ For academic use, see [Citation](#citation) for information on how to cite this 
 
 ## Installation
 
-Run these commands to clone the repository:
+Tirtha is two repositories, cloned side by side. `pyproject.toml` installs `tirtha-recon` from `../tirtha-recon`:
 ```bash
 git clone https://github.com/project-tirtha/tirtha-public.git
+git clone https://github.com/project-tirtha/tirtha-recon.git
 cd tirtha-public
-# Optional: initialise submodules required by ImageOps and related components
-git submodule update --init --recursive
+uv sync --frozen
 ```
 Then, follow the instructions in [DEVELOP.md](./DEVELOP.md) for development setup or [DEPLOY.md](./DEPLOY.md) for production/deployment setup.
 
@@ -124,15 +118,22 @@ This project received its initial funding from [La Fondation Dassault Systèmes]
 - [Anubhav Vishwakarma | AvTheBlackBird](https://github.com/AvTheBlackBird)
 - [Om Kumar | W-OK-E](https://github.com/W-OK-E)
 - [Annada Prasad Behera | annadapb](https://github.com/annadapb)
+- Debiprasad Bedanta, for the React user interface
 
 We are grateful to the developers of the following open-source libraries, which help make this project a reality:
 
+- [COLMAP](https://colmap.github.io/), available under the [BSD 3-Clause License](https://github.com/colmap/colmap/blob/main/LICENSE.txt).
+- [FastGS](https://github.com/fastgs/FastGS), available under the MIT License. Its CUDA rasteriser derives from the Inria 3D Gaussian Splatting code and is under the [Inria/MPII Gaussian-Splatting License](https://github.com/graphdeco-inria/gaussian-splatting/blob/main/LICENSE.md), which permits non-commercial research use only. FastGS is not distributed with Tirtha; it runs from its own environment.
+- [splat-transform (PlayCanvas)](https://github.com/playcanvas/splat-transform)
+- [Basis Universal](https://github.com/BinomialLLC/basis_universal), available under the [Apache 2.0 License](https://github.com/BinomialLLC/basis_universal/blob/master/LICENSE). Its transcoder is bundled in `frontend/public/basis/`.
+- [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js), available under the BSD 3-Clause License.
+- [NudeNet](https://github.com/notAI-tech/NudeNet), available under the MIT License.
+- [GaussianSplats3D](https://github.com/mkkellogg/GaussianSplats3D) and [three.js](https://github.com/mrdoob/three.js)
+- [React](https://github.com/facebook/react) and [Vite](https://github.com/vitejs/vite)
 - [AliceVision Meshroom](https://github.com/alicevision/Meshroom/), available under the [Mozilla Public License 2.0](https://github.com/alicevision/Meshroom/blob/develop/LICENSE-MPL2.md).
-- [COLMAP](https://colmap.github.io/)
 - [nerfstudio](https://github.com/nerfstudio-project)
 - [3D Gaussian Splatting Reference (Inria)](https://github.com/graphdeco-inria/gaussian-splatting)
-- [MANIQA](https://github.com/IIGROUP/MANIQA), available under the [Apache 2.0 License](https://github.com/IIGROUP/MANIQA/blob/master/LICENSE).
-- [nsfw_model](https://github.com/GantMan/nsfw_model), available under the [MIT License](https://github.com/GantMan/nsfw_model/blob/master/LICENSE.md).
+- [MANIQA](https://github.com/IIGROUP/MANIQA) and [nsfw_model](https://github.com/GantMan/nsfw_model), used by earlier versions of Tirtha.
 - [Cesium `obj2gltf`](https://github.com/CesiumGS/obj2gltf)
 - [`gltfpack`](https://github.com/zeux/meshoptimizer)
 - [Google `<model-viewer>`](https://github.com/google/model-viewer)
@@ -149,6 +150,8 @@ We are grateful to the developers of the following open-source libraries, which 
 - [OpenCV](https://github.com/opencv/opencv)
 - [Docker](https://github.com/docker)
 - [ffmpeg](https://www.ffmpeg.org/)
+
+See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for the licences of bundled third-party files and data.
 
 We also thank Odisha State Archaeology for their support.
 

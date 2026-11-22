@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+  # Same version as uv.lock and .pre-commit-config.yaml.
+  RUFF_VERSION: "0.16.5"
+
+jobs:
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: ruff check
+        run: uvx "ruff@${RUFF_VERSION}" check .
+      - name: ruff format --check
+        run: uvx "ruff@${RUFF_VERSION}" format --check .
+
+  test:
+    name: django tests
+    runs-on: ubuntu-latest
+    steps:
+      # pyproject.toml installs tirtha-recon from ../tirtha-recon, so both
+      # repositories are checked out side by side inside the workspace.
+      - uses: actions/checkout@v4
+        with:
+          path: tirtha-public
+          submodules: false
+
+      - name: Check out tirtha-recon
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/tirtha-recon
+          path: tirtha-recon
+
+      - name: System packages
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpq-dev ffmpeg
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: tirtha-public/uv.lock
+
+      - name: Install (uv sync --frozen)
+        working-directory: tirtha-public
+        run: uv sync --frozen --python "${PYTHON_VERSION}"
+
+      # SQLite and eager Celery via TIRTHA_DEV=1: no database, broker or GPU,
+      # and no local_settings.py.
+      - name: Run tests
+        working-directory: tirtha-public/tirtha_bk
+        env:
+          TIRTHA_DEV: "1"
+        run: ../.venv/bin/python manage.py test tirtha --verbosity 2
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npx vitest run
+
+      # The build also writes the manifest Django reads to find the hashed
+      # asset names.
+      - name: Build
+        run: npm run build
+
+  migrations-tracked:
+    name: migrations are tracked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if migrations are untracked or ignored
+        run: |
+          if git check-ignore -q tirtha_bk/tirtha/migrations; then
+            echo "::error::tirtha_bk/tirtha/migrations is gitignored; the migration history must be tracked."
+            exit 1
+          fi
+          count=$(git ls-files 'tirtha_bk/tirtha/migrations/*.py' | wc -l)
+          echo "tracked migration files: $count"
+          if [ "$count" -lt 8 ]; then
+            echo "::error::Expected at least 8 tracked migrations, found $count."
+            exit 1
+          fi

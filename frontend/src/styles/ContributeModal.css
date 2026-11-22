@@ -1,0 +1,827 @@
+.contribute-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 18, 28, 0.58);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+
+.contribute-modal {
+  width: min(780px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--accent-border);
+  padding: 24px;
+  padding-top: 28px;
+  position: relative;
+  animation: popIn 0.22s ease-out;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: var(--chip-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--text-primary);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-button:hover {
+  background: var(--chip-hover);
+}
+
+.contribute-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.contribute-header h2 {
+  margin: 0;
+  padding-right: 54px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.switch-account-btn {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border: 1px solid var(--info-border);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch-account-btn:hover {
+  background: var(--info-bg);
+}
+
+.section {
+  margin-bottom: 18px;
+}
+
+.section h3 {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.file-upload-box {
+  border: 2px dashed var(--info-border);
+  border-radius: 12px;
+  padding: 25px;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--dropzone-bg);
+}
+
+.file-upload-box:hover {
+  border-color: var(--info-border);
+  background: var(--dropzone-hover);
+}
+
+.file-upload-box.drag-active {
+  border-color: var(--focus-ring);
+  background: var(--dropzone-active);
+}
+
+.upload-icon {
+  font-size: 36px;
+  color: var(--info-text);
+}
+
+.upload-summary {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.upload-options,
+.checklist-section {
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface-subtle);
+  margin-bottom: 18px;
+}
+
+.collapsible-section {
+  border: 1px solid var(--info-border);
+  background: linear-gradient(180deg, var(--surface-subtle) 0%, var(--surface-subtle) 100%);
+}
+
+.section-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.section-toggle h3 {
+  margin: 0;
+}
+
+.section-toggle-icon {
+  font-size: 24px;
+  color: var(--info-text);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-collapsible-content {
+  margin-top: 14px;
+}
+
+.option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.option-label input {
+  margin-top: 4px;
+}
+
+.option-help {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.upload-checklist {
+  display: grid;
+  gap: 10px;
+  list-style: disc inside;
+  color: var(--text-primary);
+  font-size: 14px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.upload-checklist li {
+  line-height: 1.55;
+}
+
+.site-target-note {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.upload-text p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.terms-section {
+  padding: 12px 10px 12px 10px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.upload-preview-section {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+}
+
+.upload-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.upload-preview-header strong {
+  display: block;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.preview-help-text {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.preview-clear-btn {
+  background: transparent;
+  border: 1px solid var(--info-border);
+  color: var(--info-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.preview-clear-btn:hover {
+  background: var(--bg-hover);
+}
+
+.upload-preview-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.upload-progress-wrapper {
+  margin-bottom: 16px;
+}
+
+.upload-progress-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.upload-progress-text {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.upload-progress-percent {
+  color: var(--info-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.upload-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--btn-tertiary-bg) 0%, var(--btn-tertiary-hover) 100%);
+  transition: width 0.2s ease;
+}
+
+/*
+  Bytes sent, server still working: a full bar that breathes, so "processing"
+  does not look like "stuck at 100%".
+*/
+.upload-progress-wrapper.is-processing .upload-progress-fill {
+  animation: upload-processing 1.4s ease-in-out infinite;
+}
+
+@keyframes upload-processing {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-progress-wrapper.is-processing .upload-progress-fill {
+    animation: none;
+  }
+}
+
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.summary-pill.valid {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
+}
+
+.summary-pill.warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-border);
+}
+
+.summary-pill.invalid {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+}
+
+.preview-tab-row {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 16px;
+  flex-wrap: wrap;
+}
+
+.preview-tab {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.preview-tab:hover {
+  background: var(--surface-subtle);
+}
+
+.preview-tab.active {
+  background: var(--btn-tertiary-bg);
+  color: var(--btn-tertiary-text);
+  border-color: var(--btn-tertiary-bg);
+}
+
+/*
+  Which filter is in force, said without colour. The rule above is the whole of
+  the selected state, so on a monochrome screen -- or to anyone who does not see
+  that background against this one -- the row is four identical pills and the
+  card count below changes for no visible reason (WCAG 1.4.1). A mark rather
+  than a word, so there is nothing here to translate.
+*/
+.preview-tab.active::before {
+  content: '✓';
+  margin-inline-end: 6px;
+}
+
+.preview-card-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  min-height: 340px;
+  max-height: 340px;
+}
+
+.preview-card-row::-webkit-scrollbar {
+  height: 10px;
+}
+
+.preview-card-row::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.preview-card-row::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.preview-card {
+  position: relative;
+  flex: 0 0 220px;
+  min-width: 220px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface-raised);
+  border: 1px solid var(--info-border);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.preview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.preview-card.valid {
+  border-color: var(--success-border);
+}
+
+.preview-card.warning {
+  border-color: var(--warning-border);
+}
+
+.preview-card.invalid {
+  border-color: var(--error-border);
+}
+
+/*
+  The lightbox stays dark in both themes, deliberately. It exists to show a
+  photograph full-size, and a light ground around an image is glare that
+  changes how the photograph reads -- which is the one thing a contributor
+  checking their own upload must not have done to them.
+*/
+.image-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.8);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.image-lightbox-content {
+  position: relative;
+  width: min(92vw, 860px);
+  max-height: 92vh;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #0f172a;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+}
+
+/* Fixed light, because the lightbox ground above is fixed dark. A theme token
+   here would turn near-black in dark mode, on a near-black sheet. */
+.lightbox-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.lightbox-close-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.lightbox-img {
+  display: block;
+  width: 100%;
+  max-height: calc(92vh - 90px);
+  object-fit: contain;
+  background: #0f172a;
+}
+
+/* Fixed light: see `.lightbox-close-btn`. */
+.lightbox-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  color: #f8fafc;
+  font-size: 13px;
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.preview-remove-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-remove-btn:hover {
+  background: var(--chip-hover);
+}
+
+.preview-image-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+
+.preview-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-card-body {
+  padding: 14px 12px 16px;
+}
+
+.preview-filename {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-badge.valid {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.status-badge.warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.status-badge.invalid {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.preview-reason {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.terms-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.terms-label input {
+  margin-top: 2px;
+}
+
+.terms-label a {
+  color: var(--info-text);
+  text-decoration: underline;
+}
+
+.license-text {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.license-text a {
+  color: var(--info-text);
+  text-decoration: underline;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  align-items: center;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 9px 16px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.clear-btn {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.clear-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.upload-btn {
+  background: var(--btn-tertiary-bg);
+  color: var(--btn-tertiary-text);
+}
+
+.upload-btn:hover {
+  background: var(--btn-tertiary-hover);
+}
+
+.upload-btn:disabled {
+  background: var(--info-border);
+  cursor: not-allowed;
+}
+
+.error-text {
+  color: var(--error-text);
+  font-size: 13px;
+  margin: 10px 0 0;
+}
+
+.auth-banner {
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+.auth-waiting {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
+}
+.auth-banned {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+}
+
+@media (max-width: 766px) {
+  .contribute-modal {
+    width: calc(100% - 18px);
+    max-height: 92vh;
+    padding: 16px;
+    padding-top: 20px;
+    border-radius: 12px;
+  }
+
+  .contribute-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .contribute-header h2 {
+    padding-right: 44px;
+    font-size: 20px;
+  }
+
+  .modal-close-button {
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+  }
+}
+
+/*
+  The thumbnail is a control, so it looks like the card it used to be part of
+  rather than like a button: the affordance is the image, and a chrome-default
+  border around it would be noise on a grid of forty.
+*/
+.preview-open-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.preview-open-btn img {
+  display: block;
+  width: 100%;
+}
+
+/*
+  The reason the Upload button is unavailable, under the button rather than
+  behind a click on a control that cannot be clicked.
+*/
+.upload-blocked-reason {
+  margin: 6px 0 0;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/*
+  The guidance block that replaced two disclosures.
+
+  "Upload options" and "What makes a good set" were separate collapsibles, each
+  holding one thing -- a checkbox and a bullet list. Two clicks to reach two
+  paragraphs, in a dialog whose whole job is to accept photographs. One block,
+  open, prose instead of bullets.
+*/
+.upload-guidance h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.upload-guidance-text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+
+.upload-guidance .option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.upload-guidance .option-help {
+  margin: 4px 0 0 24px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  max-width: 58ch;
+}

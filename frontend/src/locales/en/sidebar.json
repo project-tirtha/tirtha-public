@@ -1,0 +1,48 @@
+{
+  "menuItems": [
+    {
+      "id": "about",
+      "title": "What is Project Tirtha?",
+      "content": "Project Tirtha is an academic initiative to create 3D models of heritage sites, using crowdsourced images. The word Tirtha is Sanskrit for “a place of pilgrimage”, and is commonly used to refer to the sacred sites of Hinduism, Jainism and Buddhism.\n\nOur goal is to preserve and showcase the beauty and cultural significance of heritage sites. We believe that by allowing the general public to contribute to the creation of these models, and by providing open access to these models, we can increase awareness and appreciation of these important cultural landmarks and inspire future generations to maintain them for years to come.\n\nThe project is open-source under the GNU Affero General Public License v3.0, and is developed at Dr. Subhankar Mishra's Lab, School of Computer Sciences, National Institute of Science Education and Research, Bhubaneswar."
+    },
+    {
+      "id": "contribute",
+      "title": "How do I contribute?",
+      "content": "Sign in, choose a site on the map, and upload photographs of it. An administrator activates each new account before its first contribution.\n\nPhotographs work best when they cover the site from many angles with plenty of overlap between consecutive shots, in even light, and with the whole structure in focus. Please make sure that photographing the site is permitted and safe before you go.\n\nIf a site you care about is not on the map, you can ask for it to be added."
+    },
+    {
+      "id": "how",
+      "title": "How does it work?",
+      "content": "Uploaded photographs go through two automated pipelines.\n\nThe photogrammetry pipeline is based on AliceVision. The textured mesh it produces is denoised, decimated and converted to a .glb file with obj2gltf, then optimised for the web with meshoptimizer.\n\nThe Gaussian splatting pipeline uses FRGS (fvdb-reality-capture, NVIDIA / OpenVDB), which optimises a set of 3D Gaussians directly from the camera poses recovered by COLMAP.\n\nThe models shown here are low-poly, compressed versions, because they have to load on a phone. The fuzz and floating fragments in a splat model are artifacts of the splatting process, not part of the site."
+    }
+  ],
+  "documents": [
+    {
+      "id": "terms",
+      "title": "Terms of Use",
+      "path": "/terms/"
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy Policy",
+      "path": "/privacy/"
+    },
+    {
+      "id": "acknowledgment",
+      "title": "Acknowledgment",
+      "path": "/acknowledgment/"
+    }
+  ],
+  "documentsHeading": "Documents",
+  "footer": {
+    "copyright": "© 2023-26 Project Tirtha",
+    "licence": "Models are released under CC BY-NC-ND 4.0; the code under AGPL-3.0."
+  },
+  "links": {
+    "heading": "The project",
+    "paper": "Read the paper",
+    "code": "Source code",
+    "chat": "Matrix room",
+    "contact": "Contact us"
+  }
+}

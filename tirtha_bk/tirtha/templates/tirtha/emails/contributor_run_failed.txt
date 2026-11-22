@@ -1,0 +1,26 @@
+Hello {{ contributor_name }},
+
+Thank you for contributing photographs of {{ site_name }}.
+
+{% if model_built %}A 3D model was built from this batch, but a step after it did not finish, so
+the model is not published yet. This is not a problem with your account or with
+your photographs, and nothing you contributed has been lost.{% else %}We were not able to build a 3D model from this batch. This is not a problem
+with your account, and nothing you contributed has been lost -- your images are
+kept and will be used in a future attempt.{% endif %}
+
+{% if reason %}What went wrong: {{ reason }}{% endif %}
+
+{% if guidance %}{{ guidance }}{% endif %}
+
+{% if about_photography %}Reconstruction is sensitive to how a site was photographed, and a failure is
+usually about coverage rather than about any single picture. More overlapping
+views, taken all the way around the subject and at a steady exposure, give the
+next attempt a much better chance.{% else %}We have been notified and will look into it. There is nothing you need to do.{% endif %}
+
+You can see the site here:
+{{ site_url }}
+
+Thank you again for helping build the archive.
+
+-- Project Tirtha
+{{ base_url }}

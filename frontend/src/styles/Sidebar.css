@@ -1,0 +1,958 @@
+.sidebar-temple-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+/*
+  The name sits beside the back control rather than under it, so the heading
+  keeps the top of the panel and the exit is where a reader looks for it.
+*/
+.sidebar-temple-header {
+  display: flex;
+  /* `flex-start`, not `center`: the name may run to two lines, and centring
+     then floats the back button against the middle of it. */
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* The name and place stack, so the name gets the row's width rather than
+   sharing it with the location. */
+.sidebar-temple-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-temple-back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 20px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sidebar-temple-back:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/*
+  Two lines, then ellipsis -- the same rule the list rows use.
+
+  This had no limit at all. "Lakhmaneswara Bharateswara Shatrughneswara Temple"
+  at 18px bold wraps to three lines in a 380px panel and pushes the location,
+  the status and the actions down with it. `overflow-wrap: anywhere` is for the
+  other shape of the problem: a single unbroken word cannot be wrapped, so
+  without it a long one widens the panel instead of breaking.
+*/
+.sidebar-temple-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.sidebar-temple-location {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.sidebar-temple-description {
+  padding: 8px 0;
+}
+
+.sidebar-temple-description h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 4px;
+}
+
+.sidebar-temple-description p {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.sidebar-contribute-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+/*
+  A floating panel, not a column.
+
+  It was a flex child flush to the viewport's left edge, full height, square,
+  with a hard border down its right side -- so the map began where the panel
+  ended and the two met at a seam. Every other surface on this page already
+  floats: the search field, the basemap picker, the theme toggle, the legend,
+  the model. The panel was the one thing still bolted to the frame.
+
+  Out of the flow entirely, which means the map now runs the full width of the
+  window *behind* it. That is the point: the country is whole, and the panel
+  sits on top of it.
+*/
+.sidebar {
+  position: absolute;
+  top: var(--control-inset);
+  left: var(--control-inset);
+  /*
+    Short of the attribution bar.
+
+    The bar used to move out of this panel's way, which meant it shifted every
+    time the panel opened or was dragged. Reserving its height here instead
+    keeps the OpenStreetMap credit visible without either of them moving.
+  */
+  height: calc(
+    100% - (2 * var(--control-inset)) - var(--map-footer-height, 28px)
+  );
+  width: 380px;
+  background: var(--sidebar-bg);
+  padding: 20px;
+  overflow-y: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-sizing: border-box;
+  color: var(--sidebar-text);
+  z-index: 1250;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 18%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              visibility 0.3s;
+}
+
+/*
+  While the drag is under way the width comes straight off the pointer, so the
+  0.3s easing would only make it lag behind the cursor. The viewer's handle
+  drops its transition the same way (`.viewer-column.is-dragging`).
+*/
+.sidebar.is-resizing {
+  transition: none;
+}
+
+/*
+  Slid out rather than collapsed to zero width. Nothing reflows when it goes --
+  it is out of the flow -- so animating `width` and `padding` only made the
+  contents reflow on the way, which is the expensive half of the transition and
+  the visible one.
+*/
+.sidebar.hidden {
+  transform: translateX(calc(-100% - var(--control-inset) - 4px));
+  opacity: 0;
+  pointer-events: none;
+  /*
+    `visibility`, not just `opacity`: an opacity-0 panel is still focusable and
+    still read out, so the collapsed sidebar's fifty-odd controls stayed in the
+    tab order (`inert` in `Sidebar.jsx` covers the same ground for browsers
+    that have it). It is in the transition list above, which is what keeps it
+    `visible` for the whole of the collapse rather than blinking out at the
+    first frame.
+  */
+  visibility: hidden;
+}
+
+.sidebar.visible {
+  width: 380px;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+/* Remove the old keyframe animations - no longer needed */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  cursor: col-resize;
+  transition: background 0.2s ease;
+  user-select: none;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--btn-primary-bg);
+  opacity: 0.7;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /*
+    Was 25 + 15 + a 2px rule under a 30px wordmark and a 45px mark -- about
+    130px of the panel spent before the first site. A 2px rule is heavy for a
+    divider; 1px is the weight everything else on this page uses.
+  */
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.sidebar-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.sidebar-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.beta-badge {
+  /*
+    Was `#2196f3` with white -- 3.12:1, on 12px semibold text, which needs
+    4.5:1. It is the same blue the theme tokens dropped for exactly that
+    reason; hardcoding it here is what kept it out of reach of the contrast
+    test, which parses `theme-variables.css`. Using the token means one change
+    fixes both, and the test can see it.
+  */
+  background-color: var(--btn-tertiary-bg, #1565c0);
+  color: var(--btn-tertiary-text, var(--text-inverse));
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+/* Scrollbar styling for sidebar content */
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/*
+ * The panel's foot: the canonical documents, plus the copyright and licence.
+ *
+ * The document links existed in `sidebar.json` and were rendered by nothing --
+ * the Acknowledgment page, which credits contributors by name, was reachable
+ * from nowhere in the app.
+ */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 12px 14px;
+  border-top: 1px solid var(--border-color);
+  transition: border-color 0.3s ease;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sidebar-footer nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-footer a {
+  /* A comfortable pointer target in a dense corner (WCAG 2.5.8). */
+  display: inline-block;
+  min-height: 24px;
+  padding: 2px 0;
+  /* `--sidebar-link`: chosen when the panel was a cream gradient and the colour
+     had to clear 4.5:1 against its darkest end. The panel is a neutral surface
+     now, so this is simply a green that still clears it -- kept rather than
+     swapped, because it is a deliberate contrast choice either way. */
+  color: var(--sidebar-link);
+}
+
+.sidebar-footer a:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+.sidebar-copyright,
+.sidebar-licence {
+  margin: 0 0 4px;
+  line-height: 1.45;
+}
+.copyright {
+  font-size: 18px;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.copyright small {
+  display: inline;
+}
+
+/* Scrollbar styling */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(84vw, 320px) !important;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 14px 12px;
+    z-index: 1250;
+    border-right: 1px solid var(--border-color);
+    border-bottom: none;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.2);
+    background: var(--sidebar-bg);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: auto;
+  }
+
+  .sidebar.visible {
+    transform: translateX(0);
+    width: min(84vw, 320px) !important;
+  }
+
+  .sidebar.hidden {
+    transform: translateX(-100%);
+    width: min(84vw, 320px) !important;
+    padding: 14px 12px !important;
+    opacity: 0;
+  }
+  /*
+    This `}` used to be here, closing the 768px query seventy lines early --
+    so every mobile rule below applied at every width. The resize handle was
+    `display: none` on the desktop it exists for, the mobile close button
+    showed on a 27-inch screen, and the logo was stuck at its phone size. It
+    now closes after the last of them.
+  */
+  .sidebar-resize-handle {
+    display: none;
+  }
+
+  .sidebar-header {
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+  }
+
+  .sidebar-logo {
+    height: 34px;
+  }
+
+  .sidebar-title {
+    font-size: 20px;
+  }
+
+  .beta-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  .sidebar-content {
+    gap: 8px;
+    padding-right: 0;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    overflow: visible;
+    flex: 0 0 auto;
+    min-height: auto;
+  }
+
+  .sidebar-footer {
+    padding-top: 14px;
+  }
+  .copyright {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: min(88vw, 300px) !important;
+    padding: 12px 10px;
+  }
+
+  .sidebar.hidden {
+    width: min(88vw, 300px) !important;
+    padding: 12px 10px !important;
+  }
+
+  .sidebar-header {
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+  }
+
+  .sidebar-logo {
+    height: 30px;
+  }
+
+  .sidebar-title {
+    font-size: 17px;
+  }
+  .copyright {
+    font-size: 11px;
+  }
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.stats-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.stats-value {
+  /* 16, not 18. Two numbers in a panel of 11-13px text read as the loudest
+     thing in it at 18, and neither of them is what the panel is about. */
+  font-size: 16px;
+  color: var(--text-primary);
+  display: block;
+}
+
+/*
+  Coordinates and Contribution statistics, at the panel's own scale.
+
+  Neither section had a single rule, so its `h4` and its `p` rendered at the
+  browser's defaults -- a 16px paragraph with 1em margins -- inside a panel
+  whose text is 11px to 13px everywhere else. The Description section beside
+  them had the heading style all along (`.sidebar-temple-description h4`);
+  these two simply never got it, which is why the panel read as three different
+  documents stacked on each other.
+
+  Sized here rather than by adding classes in the JSX: the markup already says
+  what these are, and a stylesheet that has to be edited in two places to change
+  one size is how they drifted apart in the first place.
+*/
+.sidebar-coordinates h4,
+.sidebar-stats-section h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 4px;
+}
+
+.sidebar-coordinates p,
+.sidebar-stats-section p,
+.sidebar-description-body,
+.sidebar-temple-description > p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.sidebar-maps-link,
+.stats-loading {
+  font-size: 12.5px;
+}
+
+/* Sidebar Hamburger Placeholder */
+/*
+  The placeholder is gone, and so is the button it was holding room for.
+
+  While the panel is open there were two controls that closed it: the floating
+  hamburger, which stayed put and merely went transparent, and the X in the
+  header. The hamburger is `position: fixed` at `--control-inset` so its centre
+  sits at y=34, while the header row -- 20px of panel padding plus a 44px row --
+  centres at y=54. Twenty pixels apart, with a 36px gap beside it reserving
+  space for a button already drawn on top of the panel. That is the alignment
+  that was off: the mark, the wordmark and the X were all measured from a
+  phantom.
+
+  Open, the X closes the panel. Closed, the hamburger opens it. One control for
+  one job in each state, and the header starts at the panel's own padding.
+*/
+
+/* Global Sidebar Toggle Button */
+.sidebar-toggle-btn {
+  /* The same tokens the basemap picker and the theme toggle use, so the three
+     floating controls are one control in three places. */
+  position: fixed;
+  top: var(--control-inset);
+  left: var(--control-inset);
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-size);
+  height: var(--control-size);
+  border-radius: var(--control-radius);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: var(--control-shadow);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+/* If sidebar is visible, make the button look like a flat part of the sidebar header */
+.sidebar-toggle-btn.sidebar-visible {
+  display: none;
+}
+
+/* Responsive tablet/mobile viewports */
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    top: var(--mobile-top-row-top, 12px) !important;
+    left: var(--mobile-edge-padding, 12px) !important;
+    width: var(--mobile-btn-size, 44px) !important;
+    height: var(--mobile-btn-size, 44px) !important;
+    border-radius: 12px !important;
+    background: var(--bg-primary, var(--surface-raised)) !important;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1)) !important;
+    color: var(--text-primary, #333333) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  .sidebar-toggle-btn.sidebar-visible {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar-toggle-btn {
+    top: var(--mobile-top-row-top, 10px) !important;
+    left: var(--mobile-edge-padding, 10px) !important;
+  }
+}
+
+/*
+  The in-panel dismiss. Previously the only control was outside the panel,
+  which the panel covers on a narrow viewport -- so on a phone the sidebar
+  could not be closed at all.
+*/
+.sidebar-close-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-size);
+  height: var(--control-size);
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 0.375rem;
+}
+
+.sidebar-close-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/*
+ * A curated description is prose with links, not a paragraph of plain text --
+ * 27 of the 59 carry lists and outbound references. Styled so those read as
+ * part of the panel rather than as a browser default dropped into it.
+ */
+.sidebar-description-body p {
+  margin: 0 0 8px;
+  line-height: 1.55;
+}
+
+.sidebar-description-body p:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-description-body ul,
+.sidebar-description-body ol {
+  margin: 6px 0 10px;
+  padding-left: 20px;
+}
+
+.sidebar-description-body li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.sidebar-description-body a {
+  color: var(--sidebar-link);
+  /* These leave the site; the underline is the only thing saying so once the
+     colour has been matched to the panel. */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-description-body a:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+/*
+  The site list.
+
+  The panel's default state used to render nothing at all here, so this is the
+  first thing most visitors see. It scrolls independently of the footer, which
+  stays pinned: the documents and the licence are the two things that must not
+  scroll out of reach.
+*/
+.sidebar-site-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  /*
+    One scroller, here, rather than one per list.
+
+    Both `ul`s were `overflow-y: auto` inside this `flex: 1` column. The first
+    one -- the located sites -- has no flex constraint, so it sized to content
+    and took the whole height; the "N not yet located" heading and the list
+    under it were laid out past the bottom of this box and clipped. On
+    production that is 29 of 59 sites reachable from no surface at all, which is
+    the exact failure the markup comment above says the unplaced list exists to
+    fix.
+
+    Scrolling the container instead means the heading travels with the rows it
+    labels, and neither list can starve the other.
+  */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-site-list-heading {
+  /* Never compressed to nothing by a long list above it. */
+  flex: none;
+  margin: 4px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  /*
+    `--text-tertiary` is measured against `--bg-primary`, and this heading sits
+    on the panel's gradient instead: #9a9a9a on the dark theme's top stop is
+    4.10:1 and #707070 on the light theme's bottom stop is 4.09:1, both under
+    the 4.5:1 this 12px label needs. `--text-secondary` is 5.32:1 and 4.75:1 at
+    those same ends and still reads quieter than the site names below it.
+  */
+  color: var(--text-secondary);
+}
+
+.sidebar-site-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 8px;
+  /* `overflow-y: auto` was here. See the note on the container: two scrollers
+     in one column is what cut the second list off. */
+  min-height: 0;
+  /* Size to content and do not shrink -- the container scrolls, not these. */
+  flex: none;
+}
+
+.sidebar-site-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-site-row:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+.sidebar-site-row img {
+  flex: none;
+}
+
+.sidebar-site-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/*
+  Two lines, then ellipsis.
+
+  On one line, "Lakhmaneswara Bharateswara Shatrughneswara Temple" -- 448px of
+  name in a 237px row -- became "Lakhmaneswara Bharatesw…", which is not a name
+  anybody can recognise. Five of the sixty sites are long enough to hit this.
+  Two lines fits every one of them, and the clamp still catches whatever comes
+  next.
+*/
+.sidebar-site-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.sidebar-site-place {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A site with no coordinate: listed, searchable, linkable -- just not drawn. */
+.sidebar-site-row--unplaced .sidebar-site-unplaced-icon {
+  flex: none;
+  font-size: 18px;
+  color: var(--text-tertiary);
+}
+
+/*
+  A row is a site, so it shows the site.
+
+  It was a name, a place line and a 15px pin -- accurate and unrecognisable. The
+  image is the 360x270 derivative already generated beside each thumbnail, at
+  4 KB rather than the 420 KB original, so a list of sixty costs about what one
+  full thumbnail used to.
+*/
+.sidebar-site-thumb {
+  flex: none;
+  width: 52px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg-secondary);
+}
+
+/* The row you are looking at, marked by more than the map's camera. */
+.sidebar-site-row.is-current {
+  background: var(--sidebar-accent);
+  border-color: var(--border-color);
+}
+
+/*
+  What this is, said once, where somebody lands.
+
+  The project's own sentence existed only in its meta tags and behind the About
+  panel, so a visitor arriving at a map of pins had nothing telling them what
+  they were looking at.
+*/
+.sidebar-tagline {
+  margin: 0 12px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+
+/*
+  Nested padding, taken out.
+
+  The panel pads 20px, the detail view inside it pads another 12, the stats
+  block another 16, and each list row another 14 -- so a site name sat about
+  62px in from the panel edge and every block was inset from the one above it.
+  Boxes inside boxes inside boxes is what reads as stacked-up; the panel's own
+  padding is the margin, and the blocks inside it are separated by rules and
+  space rather than by more walls.
+*/
+.sidebar-temple-detail {
+  padding: 0;
+  gap: 14px;
+}
+
+.sidebar-stats-section {
+  padding: 14px 0 0;
+  border-top: 1px solid var(--border-light);
+}
+
+/* The icon and its text on one baseline, at the text's own size -- an icon
+   larger than the words it labels is the other half of "cartoonish". */
+.sidebar-temple-location,
+.stats-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-temple-location .material-icons,
+.stats-label .material-icons {
+  font-size: 1em;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/*
+  Type: one step down, and less of it bold.
+
+  A 19px 700-weight wordmark over a 700-weight site name over 600-weight labels
+  is three shouts in a column. The wordmark stays the heaviest thing in the
+  panel and everything under it steps down.
+*/
+.sidebar-title {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+.sidebar-temple-name {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.sidebar-temple-location {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sidebar-tagline {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* The panel is a document surface, not a card: a 14px radius on a 380px column
+   that runs the height of the window reads as a toy. */
+.sidebar {
+  border-radius: 10px;
+}
+
+
+/*
+  The project's links: paper, source, room, contact.
+
+  A quiet row of icon buttons above the copyright, at the same 44px target the
+  rest of the interface uses. They are the least-pressed controls in the panel,
+  so they are drawn the lightest -- present when looked for, silent otherwise.
+*/
+.sidebar-links ul {
+  display: flex;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.sidebar-links a:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-links a:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+.sidebar-links .material-icons {
+  font-size: 18px;
+}

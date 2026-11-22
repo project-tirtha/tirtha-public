@@ -1,7 +1,7 @@
-from django.core.management.base import BaseCommand
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.core.management.base import BaseCommand
+from django.template.loader import render_to_string
 
 
 class Command(BaseCommand):
@@ -22,12 +22,12 @@ class Command(BaseCommand):
         )
 
         # Create mock objects for testing
-        mock_mesh = type(
+        mock_site = type(
             "MockMesh",
             (),
             {
                 "name": "Test Heritage Temple",
-                "ID": "test-mesh-success-12345",
+                "ID": "test-site-success-12345",
             },
         )()
 
@@ -36,7 +36,7 @@ class Command(BaseCommand):
             (),
             {
                 "ID": "test-contrib-success-uuid-12345",
-                "mesh": mock_mesh,
+                "site": mock_site,
             },
         )()
 
@@ -51,17 +51,17 @@ class Command(BaseCommand):
             self.stdout.write(f"Sending test email to: {recipient_email}")
 
         # Prepare email content
-        subject = f"Your Contribution to {mock_mesh.name} is Ready!"
+        subject = f"Your Contribution to {mock_site.name} is Ready!"
 
         # Template context
         context = {
             "contribution_id": mock_contribution.ID,
-            "mesh_id": mock_mesh.ID,
-            "mesh_name": mock_mesh.name,
+            "site_id": mock_site.ID,
+            "site_name": mock_site.name,
             "contributor_email": recipient_email,
             "contributor_name": contributor_name,
             "operation_type": "aV",  # Will be displayed as "Photogrammetry" in template
-            "mesh_url": f"{settings.BASE_URL}/mesh/{mock_mesh.ID}/",
+            "site_url": f"{settings.BASE_URL}/site/{mock_site.ID}/",
             "processing_duration": "2:15:30",  # Mock 2 hours 15 minutes 30 seconds
             "ark_url": f"{settings.BASE_URL}/ark:/999999/a1b2c3d4e5",
             "ark_id": "999999/a1b2c3d4e5",

@@ -6,7 +6,7 @@ A contribution run has been completed successfully on the Tirtha platform.
 
 Run Details:
 ============
-Heritage Site: {{ mesh_name }} ({{ mesh_id }})
+Heritage Site: {{ site_name }} ({{ site_id }})
 Contributor: {{ contributor_name }} ({{ contributor_email }})
 Processing Type: {% if operation_type == "aV" %}Photogrammetry{% elif operation_type == "GS" %}Gaussian Splatting{% else %}{{ operation_type }}{% endif %}
 Contribution ID: {{ contribution_id }}
@@ -33,7 +33,7 @@ Status Summary:
 Admin Actions:
 ==============
 View Contribution: {{ contribution_admin_url }}
-View Heritage Site: {{ mesh_admin_url }}
+View Heritage Site: {{ site_admin_url }}
 Admin Panel: {{ base_admin_url }}
 
 The processing has completed successfully and the contributor has been automatically 

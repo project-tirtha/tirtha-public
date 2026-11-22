@@ -30,13 +30,13 @@
             <div class="contribution-info">
                 <h3>Contribution Details:</h3>
                 <p><strong>Contribution ID:</strong> {{ contribution.ID }}</p>
-                <p><strong>Mesh:</strong> {{ contribution.mesh.name }} ({{ contribution.mesh.ID }})</p>
-                <p><strong>Location:</strong> {{ contribution.mesh.district }}, {{ contribution.mesh.state }}, {{ contribution.mesh.country }}</p>
+                <p><strong>Heritage site:</strong> {{ contribution.site.name }} ({{ contribution.site.ID }})</p>
+                <p><strong>Location:</strong> {{ contribution.site.district }}, {{ contribution.site.state }}, {{ contribution.site.country }}</p>
                 <p><strong>Contributor:</strong> {{ contribution.contributor.name|default:"Unknown" }} ({{ contribution.contributor.email }})</p>
                 <p><strong>Contribution Time:</strong> {{ contribution.contributed_at|date:"Y-m-d H:i:s T" }}</p>
                 <p><strong>Number of Images:</strong> {{ image_count }}</p>
-                {% if total_images %}<p><strong>Total Images for Mesh:</strong> {{ total_images }}</p>{% endif %}
-                {% if total_contributions %}<p><strong>Total Contributions for Mesh:</strong> {{ total_contributions }}</p>{% endif %}
+                {% if total_images %}<p><strong>Total Images for Heritage site:</strong> {{ total_images }}</p>{% endif %}
+                {% if total_contributions %}<p><strong>Total Contributions for Heritage site:</strong> {{ total_contributions }}</p>{% endif %}
             </div>
             
             <div class="stats">
@@ -51,7 +51,7 @@
             <p>You can view and manage this contribution through the admin panel:</p>
             
             <a href="{{ contribution_admin_url }}" class="action-button">View Contribution</a>
-            <a href="{{ mesh_admin_url }}" class="action-button">View Mesh</a>
+            <a href="{{ site_admin_url }}" class="action-button">View site</a>
             
             <p>Alternatively, you can access the admin panel directly at: <a href="{{ base_admin_url }}">{{ base_admin_url }}</a></p>
         </div>

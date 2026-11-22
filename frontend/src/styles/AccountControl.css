@@ -1,0 +1,73 @@
+/*
+  The account control, in the map's right-edge stack.
+
+  Wider than the square controls beside it because it carries a name, and
+  right-aligned with them so the stack keeps one edge.
+*/
+.account-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-size);
+  max-width: min(220px, calc(100vw - 96px));
+  padding: 0 10px;
+  border: 1px solid var(--map-chrome-border);
+  border-radius: var(--control-radius);
+  background: var(--map-chrome-bg);
+  color: var(--map-chrome-text);
+  box-shadow: var(--control-shadow);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-control--signin {
+  cursor: pointer;
+}
+
+.account-control--signin:hover {
+  background: var(--map-chrome-hover);
+}
+
+.account-control:focus-within,
+.account-control--signin:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+.account-control .material-icons {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* A long address must not push the sign-out button off the control. */
+.account-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.account-signout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--map-chrome-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.account-signout:hover {
+  background: var(--map-chrome-hover);
+  color: var(--map-chrome-text);
+}
+
+.account-signout:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

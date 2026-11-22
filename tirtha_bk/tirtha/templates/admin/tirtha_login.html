@@ -1,0 +1,27 @@
+{% extends "admin/login.html" %}
+{% comment %}
+  The admin login page (tirtha/admin_auth.py: admin_login). Google first; the
+  username/password form only while ADMIN_PASSWORD_LOGIN is on.
+{% endcomment %}
+
+{% block content %}
+<div id="google-signin" class="submit-row">
+  <a class="button default" href="{{ google_signin_url }}">Sign in with Google</a>
+</div>
+
+{% if password_login %}
+{{ block.super }}
+{% else %}
+<div id="content-main">
+{% if password_refused %}
+<p class="errornote">Password sign-in is disabled. Use "Sign in with Google".</p>
+{% endif %}
+{% if user.is_authenticated %}
+<p class="errornote">
+  You are authenticated as {{ username }}, but are not authorized to access
+  this page. Sign in with a different Google account.
+</p>
+{% endif %}
+</div>
+{% endif %}
+{% endblock %}

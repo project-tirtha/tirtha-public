@@ -6,7 +6,7 @@ data/
 paper/
 
 # Folders - django
-migrations/
+# migrations/  -- un-ignored 2026-08-29: the migration history is the only record of a 3-year-old production schema (internal design notes)
 models/
 fixtures/
 
@@ -22,11 +22,18 @@ Meshroom-2023.1.0/
 *.db
 db*
 db.sqlite3
+# Beta database -- a restored copy of production data; never committed.
+beta.sqlite3
 local_settings.py
 gunicorn.conf.py
 local_tasks.py
 celerybeat-schedule*
-leaderboard.*
+# Real secrets: SECRET_KEY, DB_PWD, RMQ_PWD, mail and superuser passwords.
+# Tracked from 2024-03-06 until 2026-08-31. Use build/tirtha.env.example.
+build/tirtha.env
+# leaderboard.*  -- un-ignored 2026-08-31: added 2023-07-29 for competition
+# artifacts (removed in Phase 1.1), but it also matched tirtha/leaderboard.py,
+# which api.py imports at runtime -- untracked for the whole of unit 6.7.
 
 # venv + local
 db*
@@ -38,7 +45,7 @@ todo*.md
 *.log
 cert/
 artifacts/
-tests/
+# tests/  -- un-ignored 2026-08-29: tests belong in version control (internal design notes)
 restore/
 frgs*/
 colmap_vocab_trees/

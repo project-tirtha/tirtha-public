@@ -1,0 +1,30 @@
+<!doctype html>
+<html><body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#1c2541;max-width:60ch">
+  <p>Hello {{ contributor_name }},</p>
+
+  <p>Thank you for contributing photographs of <strong>{{ site_name }}</strong>.</p>
+
+  {% if model_built %}<p>A 3D model was built from this batch, but a step after it did not finish,
+  so the model is not published yet. This is not a problem with your account or with
+  your photographs, and nothing you contributed has been lost.</p>
+  {% else %}<p>We were not able to build a 3D model from this batch. This is not a problem
+     with your account, and nothing you contributed has been lost &mdash; your
+     images are kept and will be used in a future attempt.</p>{% endif %}
+
+  {% if reason %}<p><strong>What went wrong:</strong> {{ reason }}</p>{% endif %}
+
+  {% if guidance %}<p>{{ guidance }}</p>{% endif %}
+
+  {% if about_photography %}<p>Reconstruction is sensitive to how a site was photographed, and a failure is
+     usually about coverage rather than about any single picture. More
+     overlapping views, taken all the way around the subject and at a steady
+     exposure, give the next attempt a much better chance.</p>
+  {% else %}<p>We have been notified and will look into it. There is nothing you need to do.</p>{% endif %}
+
+  <p><a href="{{ site_url }}">View the site</a></p>
+
+  <p>Thank you again for helping build the archive.</p>
+
+  <p style="color:#666">&mdash; Project Tirtha<br>
+     <a href="{{ base_url }}">{{ base_url }}</a></p>
+</body></html>

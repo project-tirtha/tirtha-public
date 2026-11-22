@@ -1,0 +1,1168 @@
+/*
+  The attribution bar, and the two links that share it.
+
+  Map-space, like the status chips in `Home.css` and the pin focus ring below:
+  it lies on the basemap, which is the same in both themes, so its ground stays
+  light on purpose rather than punching a dark band across the bottom of a light
+  map. The ink has to be settled in the same space. It was half-tokenised --
+  a hardcoded white ground under `var(--text-secondary)` and
+  `var(--color-secondary)` -- so in the dark theme the required MapLibre /
+  OpenFreeMap / OpenMapTiles credits rendered at 1.60:1 and the About and
+  Privacy buttons, the only route to those pages, at 2.17:1 on white. These
+  values are the light theme's own, so nothing changes in the theme where it
+  already worked.
+*/
+/*
+  Still, at the full width.
+
+  This started where the floating panel ended (`left: --sidebar-occupied`), so
+  opening the panel slid the whole bar sideways -- and dragging the panel's
+  resize handle moved it on every frame. It is required attribution, not a
+  moving part.
+
+  The reason it dodged was that the panel floats above the map, so a full-width
+  bar would run underneath it and lose its left half, including the
+  OpenStreetMap credit the licence requires. That is solved on the other side
+  now: `.sidebar` is shortened by `--map-footer-height`, so the panel ends above
+  this bar instead of the bar starting after the panel. Nothing overlaps and
+  nothing moves.
+*/
+.map-custom-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /*
+    On the theme, and quieter.
+
+    It was a white slab with a hard top rule and `#666` text -- so in dark mode
+    a bright band across the bottom of a dark map, and in either mode a piece of
+    page furniture drawn as heavily as the panel above it. It is attribution:
+    required, and not the thing anyone came for. Map-chrome tokens, a hairline
+    that is a tint of the border rather than pure black, and no rule at all once
+    the sidebar takes the left edge -- which is where the seam looked worst.
+  */
+  background: color-mix(in srgb, var(--map-chrome-bg) 88%, transparent);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid var(--map-chrome-border);
+  padding: 5px 12px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--map-chrome-muted);
+  box-sizing: border-box;
+}
+
+.map-custom-footer a,
+.map-custom-footer button {
+  color: var(--map-chrome-muted);
+}
+
+.map-custom-footer a:hover,
+.map-custom-footer button:hover {
+  color: var(--map-chrome-text);
+}
+
+/* Square corners: it spans the window now and meets nothing. */
+
+/*
+  `flex: 1 1 0` on *both* outer items, not `space-between` with three children.
+  Space-between centres the middle item only when the two sides happen to be the
+  same width, and they are not -- the attribution is four links and the nav is
+  two, so the credit drifted left of centre. Equal basis and equal grow makes the
+  middle exactly centred regardless of what the sides contain. `min-width: 0`
+  lets the attribution wrap instead of forcing the row wider than the viewport.
+*/
+.map-custom-attribution {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.map-custom-attribution a {
+  color: #1565c0;
+  text-decoration: none;
+}
+
+.map-custom-credit {
+  flex: 0 1 auto;
+  text-align: center;
+  padding: 0 8px;
+}
+
+/*
+  The lab's name, in Anthropic's clay -- darkened.
+
+  The brand value is `#D97757`, which measures 3.12:1 on this bar's white
+  ground. The bar is 11px, so it is normal text and wants 4.5:1 (WCAG 1.4.3);
+  the brand colour is a third short of that. `#B04F2E` is the same hue at
+  5.24:1, so the name reads as the intended orange and is legible to everyone.
+  Use the exact brand value only somewhere it is large or decorative -- here it
+  is neither, it is the only route to the lab's page.
+
+  Map-space, like the rest of this bar: the ground stays light in both themes,
+  so the ink is pinned rather than tokenised.
+*/
+.map-custom-credit a {
+  color: #B04F2E;
+  text-decoration: none;
+}
+
+.map-custom-credit a:hover,
+.map-custom-credit a:focus-visible {
+  color: #8F3D22;
+  text-decoration: underline;
+}
+
+.map-custom-attribution a:hover {
+  text-decoration: underline;
+}
+
+.map-custom-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 0;
+  gap: 8px;
+}
+
+/*
+  A real target, not an 11px word.
+
+  These measured 33x17 and 75x17 -- under the 24x24 that WCAG 2.5.8 asks of a
+  pointer target. The attribution *links* beside them are exempt: they sit
+  inline within a sentence of credits, which is the standard's own exception.
+  These two are not in a sentence, they are a two-item nav, so the exception
+  does not reach them.
+
+  Padding rather than a larger font, because the bar is 11px by design and
+  making these bigger than the credits they sit beside would be worse.
+*/
+.map-custom-links button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: #1565c0;
+  min-height: 24px;
+  padding: 4px 6px;
+}
+
+.map-custom-links button:hover {
+  text-decoration: underline;
+}
+
+/*
+  On the bar's own light ground, not the theme's. `#cccccc` here measured
+  1.43:1 against it -- a separator nobody could see, which is why the links ran
+  together. This is a glyph rather than prose, so 4:1 is generous for it.
+*/
+.map-custom-links .separator {
+  color: #767676;
+}
+
+/* Responsive adjustment for small screen widths */
+@media (max-width: 600px) {
+  .map-custom-footer {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    text-align: center;
+    padding: 6px 8px;
+  }
+
+  /*
+    Three stacked lines rather than one, so the panel above has to be shortened
+    by more. Kept beside the rule that causes it: they are one decision.
+  */
+  :root {
+    --map-footer-height: 64px;
+  }
+
+  /*
+    `flex: 1 1 0` resolves against the *main* axis, which is now vertical, so
+    leaving it set would stretch the three rows to equal height. Stacked, the
+    credit is centred by `align-items` and needs no basis of its own.
+  */
+  .map-custom-attribution,
+  .map-custom-links {
+    flex: 0 0 auto;
+    justify-content: center;
+  }
+}
+
+.map-view-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.map-instance {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  z-index: 1;
+}
+
+.map-instance .maplibregl-canvas,
+.map-instance .maplibregl-canvas-container {
+  cursor: default !important;
+}
+
+/* Ensure Leaflet map properly fills its container */
+.map-instance .leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Leaflet controls styling to match theme */
+.map-instance .leaflet-control-zoom {
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+
+.map-instance .leaflet-top.leaflet-right .leaflet-control-zoom {
+  margin: 0 !important;
+  margin-top: 60px !important;
+}
+
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-in,
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-out {
+  background-color: rgba(255, 255, 255, 0.98);
+  color: rgba(15, 23, 42, 0.88);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-in:last-child {
+  border-bottom: none;
+}
+
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-in:hover,
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-out:hover {
+  background-color: rgba(248, 250, 252, 1);
+  color: var(--primary-color, #2563eb);
+  font-weight: 800;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.08);
+}
+
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-in:active,
+.map-instance .leaflet-control-zoom>.leaflet-control-zoom-out:active {
+  background-color: var(--bg-primary);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.map-instance .leaflet-bar a {
+  color: var(--text-primary);
+}
+
+/* Attribution styling */
+.map-instance .leaflet-control-attribution {
+  background-color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
+}
+/*
+ * The hover label on a marker.
+ *
+ * Every rule here used to target `.leaflet-tooltip` and
+ * `.leaflet-tooltip-content` — class names from Leaflet, which this map has not
+ * used since the port to MapLibre. MapLibre emits `.maplibregl-popup`, so none
+ * of it ever applied and the label rendered as the library's default: a square
+ * white box with a tail and grey body text, belonging to no part of this
+ * interface.
+ *
+ * A name is a label, not a dialog: no chrome, no tail, no border. Dark type on
+ * a light plate, sized and weighted like the panel beside it.
+ *
+ * The state-name label these rules were first written for has since been
+ * removed -- it repeated what the basemap already said. The marker tooltip,
+ * which names a site you are about to click, earns its place.
+ */
+.map-instance .custom-tooltip .maplibregl-popup-content {
+  padding: 6px 11px;
+  border-radius: 8px;
+  background: var(--bg-primary, var(--surface-raised));
+  color: var(--text-primary, #1f2937);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  /* Tight and low: it should sit on the map, not float above it like a card. */
+  box-shadow: 0 1px 4px rgb(0 0 0 / 22%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* The tail points at a polygon the size of a state; it locates nothing. */
+.map-instance .custom-tooltip .maplibregl-popup-tip {
+  display: none;
+}
+.map-instance .custom-cluster-icon-pie {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* The tokens already carry both themes, so the label follows without a
+   second rule keyed off `.dark-mode`. */
+
+/*
+  Anchored to the pin, not to the top of the map.
+
+  `top: 12px; left: 50%` put it in the one place guaranteed not to be near the
+  thing it describes. It is positioned from `map.project()` now, sits above the
+  pin with a margin for the pin's own height, and the arrow points at it.
+
+  Map-space chrome, so it keeps a light ground in both themes -- see the note in
+  Home.css. Its ink is pinned to match, rather than tokenised: at
+  `--text-secondary` this was mid-grey on near-white and the coordinates were
+  the least readable thing on the map.
+*/
+.location-picker-overlay {
+  position: absolute;
+  z-index: 1000;
+  margin-top: -46px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  width: max-content;
+  max-width: min(80vw, 340px);
+  pointer-events: auto;
+}
+
+/* The arrow, pointing down at the pin it belongs to. */
+.location-picker-overlay::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -7px;
+  border: 7px solid transparent;
+  border-top-color: #ffffff;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.14));
+}
+
+/*
+  No `color` here: at (0,1,0) this rule always lost to `.location-picker-overlay p`
+  at (0,1,1), which also comes later. The colour it declared was never once
+  rendered, which is why the panel went dark-on-white in light mode and
+  white-on-white in dark, from the same stylesheet.
+*/
+.location-picker-help {
+  font-weight: 600;
+}
+
+/*
+  The answer to "where is this", which the panel did not previously give.
+
+  Its `color: #0f3d1e` is dropped rather than rescued with a specificity bump:
+  it lost the same cascade as `.location-picker-help` and has therefore never
+  appeared on screen. Reviving a green nobody has seen is a new design decision,
+  not a contrast fix, so the place name takes the panel's ink like every other
+  line in it.
+*/
+.location-picker-place {
+  margin-top: 4px !important;
+  font-weight: 600;
+}
+
+.location-picker-overlay p {
+  margin: 0;
+  font-size: 0.88rem;
+  /*
+    A pinned ink, not `var(--text-primary)`.
+
+    This panel's ground is pinned `#ffffff` above, and so is its arrow. A theme
+    token over a pinned ground is the one shape that cannot work: in dark mode
+    `--text-primary` resolves to `#f2f2f2`, which put near-white text on white
+    at about 1.1:1 -- the help line was reported as simply not visible.
+
+    A token is only safe over a themed ground. If this panel is ever made
+    theme-aware, `background`, `border-top-color` on `::after` and this colour
+    have to move together.
+  */
+  color: #1c2541;
+}
+
+.location-picker-coordinates {
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.location-picker-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+/*
+  In the same row as the hamburger, from the same tokens.
+
+  It was `top: 20px; left: 68px` against the hamburger's 12/12 -- so it sat 8px
+  lower, with a 12px gap where every other pair of floats uses 8. Reported twice
+  as "the hamburger and the search bar are not the same" and both times it was
+  this: not the size, the *baseline*.
+*/
+.map-search-overlay {
+  position: absolute;
+  top: var(--control-inset);
+  left: calc(var(--control-inset) + var(--control-size) + var(--control-gap));
+  z-index: 1100;
+  width: min(90%, 360px);
+}
+
+.map-search-overlay .search-bar {
+  width: 100%;
+}
+
+.map-search-overlay .search-suggestions {
+  left: 0 !important;
+  right: 0 !important;
+  top: calc(100% + 8px) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .map-instance .leaflet-control-zoom {
+    display: none !important;
+  }
+
+  .map-search-overlay {
+    top: var(--mobile-top-row-top, 12px);
+    left: calc(var(--mobile-edge-padding, 12px) + var(--mobile-btn-size, 44px) + var(--mobile-control-gap, 10px));
+    /*
+      One button on the right, not two.
+
+      This reserved room for the theme toggle *and* the basemap picker, which
+      shared that corner. The picker moved into `.map-control-stack`, a column
+      below the toggle, so the reservation outlived what it was reserving --
+      164px of search field on a 360px phone where 218px fits. Only the theme
+      toggle is up here now.
+    */
+    right: calc(var(--mobile-edge-padding, 12px) + var(--mobile-btn-size, 44px) + (var(--mobile-control-gap, 10px) * 2));
+    transform: none;
+    width: auto;
+    max-width: none;
+  }
+
+  .map-search-overlay .search-bar--map {
+    width: 100%;
+    max-width: none;
+  }
+
+  .map-search-overlay .search-input-wrapper--map {
+    min-width: 0;
+  }
+
+  .map-search-overlay .search-input--map {
+    padding-left: 14px;
+    padding-right: 52px;
+  }
+
+  .map-instance .leaflet-top.leaflet-left {
+    top: var(--mobile-top-row-top, 12px) !important;
+    left: var(--mobile-edge-padding, 12px) !important;
+  }
+
+  .map-instance .leaflet-control-zoom {
+    margin: 0 !important;
+  }
+
+  .location-picker-overlay {
+    top: 62px;
+    width: calc(100% - 24px);
+    left: 12px;
+    transform: none;
+    padding: 10px 12px;
+  }
+
+  .location-picker-buttons {
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+
+  .location-picker-buttons .btn {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-search-overlay {
+    top: var(--mobile-top-row-top, 10px);
+    left: calc(var(--mobile-edge-padding, 10px) + var(--mobile-btn-size, 44px) + var(--mobile-control-gap, 10px));
+    right: calc(var(--mobile-edge-padding, 10px) + var(--mobile-btn-size, 44px) + (var(--mobile-control-gap, 10px) * 2));
+  }
+
+  .map-search-overlay .search-input--map {
+    padding-left: 12px;
+    padding-right: 48px;
+    height: 42px;
+  }
+
+  .map-search-overlay .search-input-wrapper--map {
+    min-height: 42px;
+    height: 42px;
+  }
+
+  .map-search-overlay .search-input-action {
+    right: 10px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .map-instance .leaflet-top.leaflet-left {
+    top: var(--mobile-top-row-top, 10px) !important;
+    left: var(--mobile-edge-padding, 10px) !important;
+  }
+
+  .map-search-overlay .search-placeholder {
+    left: 12px;
+    right: 44px;
+    font-size: 13px;
+  }
+}
+
+/* MapLibre Zoom Control (NavigationControl) Custom Styles & Positioning */
+.map-instance .maplibregl-ctrl-bottom-right {
+  bottom: 100px !important;
+  right: 24px !important;
+  left: auto !important;
+  top: auto !important;
+  margin: 0 !important;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.map-instance .maplibregl-ctrl-group {
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden;
+}
+
+.map-instance .maplibregl-ctrl-group button {
+  width: 36px !important;
+  height: 36px !important;
+  background-color: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.map-instance .maplibregl-ctrl-group button:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.map-instance .maplibregl-ctrl-group button:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Responsive adjustment for small screen widths to align with Request site button */
+@media (max-width: 768px) {
+  .map-instance .maplibregl-ctrl-bottom-right {
+    bottom: 94px !important;
+    right: 12px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .map-instance .maplibregl-ctrl-bottom-right {
+    bottom: 114px !important;
+    right: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-instance .maplibregl-ctrl-bottom-right {
+    bottom: 112px !important;
+    right: 10px !important;
+  }
+}
+
+/*
+  Markers and clusters are <button>s now, not <div>s -- they are controls, and a
+  div with a click handler cannot be reached by keyboard (WCAG 2.1.1). The
+  browser's button styling has to be undone so they still look like pins.
+*/
+.custom-marker,
+.custom-cluster-icon-pie {
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+/*
+  Two tones, so one of them always shows.
+
+  This was a single near-black ring, on the stated grounds that the outline
+  "sits on the basemap, which does not follow the theme (the tiles are the same
+  in both)". That stopped being true when the basemap started following the
+  theme: openfreemap's dark style paints `rgb(12,12,12)`, and #1a1a1a on that is
+  **1.12:1**. A keyboard user tabbing the map in dark mode saw no focus
+  indicator at all, on any pin -- and making the markers real buttons was one of
+  the port's deliberate accessibility wins.
+
+  A theme token is still the wrong answer, and for the original reason plus one
+  more: a visitor can pin `liberty` while the interface is dark, so the basemap
+  and the theme genuinely decouple. Instead the ring carries its own contrast --
+  white against #101010 is 19.56:1, and the dark halo outside it is 16.65:1
+  against positron's near-white ground. Whichever basemap is underneath, one of
+  the two bands clears 3:1 (WCAG 2.4.11).
+*/
+.custom-marker:focus-visible,
+.custom-cluster-icon-pie:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px #101010;
+  border-radius: 4px;
+}
+
+/*
+ * The key to the pins.
+ *
+ * The three marker hues are 4.37, 4.38 and 5.84:1 against the basemap -- each
+ * legible on its own -- but 1.0, 1.34 and 1.33:1 against *each other*. Green
+ * and amber at identical luminance are the same pin to a visitor with
+ * deuteranopia or protanopia, so the pins carry a glyph and this says what the
+ * glyphs mean (WCAG 1.4.1).
+ */
+/* The border and shadow the style picker has -- these two are the same control
+   in two corners and were drifting apart. */
+/*
+  The control stack: home, basemap, key, language.
+
+  Anchored under the theme toggle, which is app-level and owns the top-right
+  corner. The offset is `--control-inset + --control-size + --control-gap` --
+  the same arithmetic the basemap picker used to place itself *beside* that
+  toggle -- so the stack starts exactly where the toggle ends and every square
+  below lines up with its right edge.
+
+  A column, not a row: five 44px controls in a row is 252px, which on a 360px
+  phone is most of the width and runs into the sidebar toggle in the other
+  corner. A right-edge stack is what every map on the web does and it grows
+  downwards without running out of room.
+*/
+.map-control-stack {
+  position: absolute;
+  top: calc(var(--control-inset) + var(--control-size) + var(--control-gap));
+  right: var(--control-inset);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--control-gap);
+  align-items: flex-end;
+
+  /*
+    Wraps into a second column rather than running off the bottom.
+
+    Five 44px controls and four gaps is 252px. That fits a phone held upright
+    with room to spare, and does not fit one turned sideways: a 360px-tall
+    landscape viewport leaves 220px between the theme toggle above and the
+    attribution bar below, so the account control fell off the screen -- and
+    it is the one that says whether you are signed in.
+
+    `wrap-reverse` on a column wraps to the *left*, which is where the space is:
+    the right edge is the anchor and the map runs away from it. The height is
+    bounded by the same tokens that place it, so the two cannot drift apart.
+  */
+  max-height: calc(
+    100dvh - var(--control-inset) - var(--control-size) - var(--control-gap) -
+      var(--map-footer-height, 28px) - var(--control-inset)
+  );
+  flex-wrap: wrap-reverse;
+}
+
+/* Each control is placed by the stack, not by itself. They were absolutely
+   positioned one by one, which is what let them drift apart. */
+.map-control-stack > * {
+  position: static;
+  inset: auto;
+}
+
+/* One square, four times. */
+.map-stack-btn,
+.map-control-stack .map-style-control > summary,
+.map-control-stack .map-language-control > summary,
+.map-control-stack .map-legend > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-size);
+  height: var(--control-size);
+  min-height: var(--control-size);
+  padding: 0;
+  border: 1px solid var(--map-chrome-border);
+  border-radius: var(--control-radius);
+  background: var(--map-chrome-bg);
+  color: var(--map-chrome-text);
+  box-shadow: var(--control-shadow);
+  cursor: pointer;
+  list-style: none;
+}
+
+.map-stack-btn:hover,
+.map-control-stack .map-style-control > summary:hover,
+.map-control-stack .map-language-control > summary:hover,
+.map-control-stack .map-legend > summary:hover {
+  background: var(--map-chrome-hover);
+}
+
+.map-stack-btn:focus-visible,
+.map-control-stack summary:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+  border-radius: var(--control-radius);
+}
+
+.map-control-stack summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-legend {
+  position: static;
+  border: none;
+  box-shadow: none;
+  background: none;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+/*
+  Panels open to the *left* of the stack.
+
+  Below would run off the bottom of a phone and would cover the controls
+  underneath; to the left there is always the width of the map. `position:
+  relative` on the `<details>` is what the absolute panel measures from.
+*/
+.map-control-stack details {
+  position: relative;
+}
+
+.map-legend-panel,
+.map-control-stack .map-style-control > ul,
+.map-control-stack .map-language-control > ul {
+  position: absolute;
+  top: 0;
+  right: calc(var(--control-size) + var(--control-gap));
+  z-index: 1;
+  width: max-content;
+  min-width: 190px;
+  max-width: min(280px, calc(100vw - var(--control-size) - 32px));
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--control-radius);
+  background: var(--surface-raised);
+  box-shadow: var(--control-shadow);
+  color: var(--text-primary);
+}
+
+.map-legend-heading {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.map-legend ul {
+  margin: 0;
+  padding: 0 14px 12px;
+  list-style: none;
+}
+
+.map-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  line-height: 1.35;
+}
+
+.map-legend-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary, #4b5563);
+}
+
+/*
+  The key had a `bottom: 86px` here, to clear the attribution bar and the
+  request button while it floated in the bottom-left corner. It has not floated
+  there since it moved into `.map-control-stack`, and the offset did not become
+  inert when it moved: `.map-control-stack details` makes it `position:
+  relative`, so on a phone the button was painted 86px above its own slot --
+  over the basemap picker two rows up, leaving a hole where it belonged.
+
+  `.map-control-stack > *` resets `inset` for exactly this reason; this rule
+  came later in the file and beat the reset.
+*/
+
+/*
+ * The map-detail control.
+ *
+ * The old `.map-style-selector-overlay` was a row at the bottom of a
+ * viewport-height container, so it rendered at y=900 on a 900px screen —
+ * present, styled, and permanently off the fold. Anchored to the map's own
+ * corner now, under the theme toggle, and built as a `<details>` so it matches
+ * the legend rather than introducing a second disclosure pattern.
+ */
+/* Placed by `.map-control-stack`, which it sits inside now. */
+.map-style-control {
+  position: relative;
+  border: none;
+  background: none;
+  box-shadow: none;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.map-style-control > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  /*
+    A comfortable pointer target (WCAG 2.5.8), and the height every other
+    floating control on the page uses. Less the border, which is on the
+    `<details>` around this: without the subtraction the control stands 46px
+    beside the theme toggle's 44 and the pair sits visibly unlevel.
+  */
+  min-height: calc(var(--control-size) - 2px);
+  padding: 0 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.map-style-control > summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-style-control > summary:focus-visible,
+.map-style-control button:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.map-style-control ul {
+  margin: 0;
+  padding: 0 8px 8px;
+  list-style: none;
+}
+
+.map-style-control button {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.map-style-control button:hover {
+  background: var(--bg-hover, #f3f4f6);
+}
+
+/* The current choice carries `aria-pressed` as well as this weight, so it is
+   not colour alone (WCAG 1.4.1). */
+.map-style-control button.active {
+  background: var(--bg-hover, #f3f4f6);
+  font-weight: 700;
+}
+
+/*
+  The basemap picker no longer positions itself, so it no longer needs a mobile
+  override -- `.map-control-stack` places it on every width. This rule survived
+  the move and would have pulled it back out of the stack.
+*/
+
+/*
+  What is under a pin, as a picture.
+
+  Map-space chrome, so both of these keep a light ground in both themes -- see
+  the note in Home.css.
+*/
+.temple-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  /*
+    Bounded. The name and place had no styling of their own, so a long name
+    stretched the popup across the map -- and MapLibre anchors a popup by its
+    centre, so a wide one covers the pin it belongs to.
+  */
+  max-width: 260px;
+}
+
+.tooltip-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #e8e8e8;
+}
+
+.tooltip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/*
+  One line each, then ellipsis. A tooltip is a glance, not a place to read a
+  full name -- the panel behind it shows that in full, over two lines.
+*/
+.tooltip-temple-name,
+.tooltip-location {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+  The cluster's contact sheet: which monuments are under this pin, and a way
+  into each without zooming first.
+*/
+.cluster-sheet {
+  padding: 2px;
+}
+
+.cluster-sheet-heading {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.cluster-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.cluster-sheet-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cluster-sheet-tile:hover,
+.cluster-sheet-tile:focus-visible {
+  background: #eef2f7;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.cluster-sheet-tile img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 5px;
+  background: #e8e8e8;
+}
+
+/* No picture yet: the site's own pin, so the tile still says which it is. */
+.cluster-sheet-tile .cluster-sheet-pin {
+  width: 22px;
+  aspect-ratio: auto;
+  margin: 8px auto;
+  object-fit: contain;
+  background: none;
+}
+
+.cluster-sheet-tile span {
+  font-size: 10px;
+  line-height: 1.25;
+  color: #1c2541;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+/*
+  Language, as a segmented pill rather than a popover.
+
+  Two languages are offered, so a menu would hide one behind a click to save a
+  control-width. They stay links -- `LanguageSwitcher` routes by URL so a
+  language is shareable and crawlable, and a button would throw that away.
+*/
+/*
+  Language, as an icon square that opens a list.
+
+  Two shapes preceded this. A segmented pill naming both languages was ~137px
+  wide among 44px squares -- most of what made the desktop row look ragged. A
+  single square showing only the *other* language fitted but read strangely: its
+  label was the option, not the state, and it changed word on click.
+
+  It is now a `<details>` like the basemap picker and the key, and takes their
+  styling by joining their selectors above rather than by repeating it. The list
+  inside reuses `.map-style-btn`, so a language row and a basemap row are the
+  same control.
+*/
+.map-language-control {
+  position: relative;
+  border: none;
+  background: none;
+}
+
+.map-language-control > ul {
+  list-style: none;
+  margin: 0;
+}
+
+/* Links, not buttons -- `LanguageSwitcher` routes by URL so a language stays
+   shareable and crawlable -- but they must look like the buttons beside them. */
+.map-language-control a.map-style-btn {
+  display: block;
+  text-decoration: none;
+}
+
+/*
+  The `.map-language` pill that stood here is gone.
+
+  It styled the switcher as a segmented control naming both languages -- right
+  when it had a row to itself, ~137px wide among 44px squares in the stack. The
+  stack form is `.map-language-control` above, and shares the basemap picker's
+  styling. Left as a note rather than deleted silently because the rule also set
+  `overflow: hidden`, which would have clipped the new control's panel had the
+  class stayed on the element.
+*/
+
+/*
+  On a phone the stack shares the right edge with nothing else, but the theme
+  toggle moves to its own mobile position, so the stack starts higher.
+*/
+@media (max-width: 768px) {
+  .map-control-stack {
+    top: calc(var(--mobile-top-row-top, 12px) + var(--mobile-btn-size, 44px) + var(--control-gap));
+    right: var(--mobile-edge-padding, 12px);
+  }
+}
+
+/*
+  On a wide screen the stack is a row, not a column.
+
+  The column is a phone shape. Five controls of three different widths stacked
+  down the right edge leave a ragged left edge, and the two wide ones -- the
+  language pill and the account chip -- make the group read as a list of
+  unrelated things rather than as one toolbar. A 360px phone has no room for
+  anything else and the column is right there; a desktop has the whole width of
+  the map and the column is just the phone layout left switched on.
+
+  1024px, not the 768px the rest of this file breaks at, and not the 1200 this
+  briefly used. The row is about 520px -- three 44px squares, the language pill
+  and the account chip, with gaps -- and it shares a line with the 44px theme
+  toggle and its gap.
+
+  The width it may occupy is *computed against the search field* rather than
+  guessed, which is what the 1200 was: a number picked to be safely clear of a
+  collision. The account chip's width depends on the signed-in address, so the
+  row has no fixed width to pick a breakpoint for, and a guess is either too
+  wide (it collides) or too cautious (it turns the row off on screens that
+  could show it). Reserving the field's own extent means it cannot collide at
+  any width, and `flex-wrap` handles the case where it still does not fit.
+
+  Below 1024 the column returns. That is not a worse layout -- the toggle is
+  already its first item and the right edges already line up.
+
+  It stays on the second row, below the theme toggle and clear of the search
+  field in the first, so widening it cannot collide with either. `wrap` rather
+  than the column's `wrap-reverse`: it now overflows sideways, and the space is
+  to the left.
+*/
+@media (min-width: 1024px) {
+  .map-control-stack {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    /* The column's ceiling was the viewport height minus the attribution bar.
+       A row cannot run off the bottom, and the bound would now clip it. */
+    max-height: none;
+
+    /*
+      On the theme toggle's own line, not the line below it.
+      
+      The column shared a right edge with the toggle, so the toggle read as the
+      first control in the stack. Turning the stack into a row broke that: the
+      toggle was left alone on one line with five controls on the next, at a
+      different level from every icon it belongs with.
+      
+      The toggle is `position: fixed` in `ThemeToggle.css` and is app-level, not
+      the map's, so it cannot simply join this flex container. Instead the row
+      ends where the toggle begins -- one inset, one control, one gap -- and the
+      six read as a single toolbar again.
+    */
+    top: var(--control-inset);
+    right: calc(
+      var(--control-inset) + var(--control-size) + var(--control-gap)
+    );
+    /*
+      Everything the search field and the toggle are not using.
+
+      The field is `left: --control-inset + --control-size + --control-gap` and
+      at most 360px wide, so it ends at 424px. Take that, a gap, the toggle, its
+      gap and the inset, and what remains is what the row may have. It cannot
+      overlap the field because the field's own extent is in the arithmetic.
+    */
+    max-width: calc(
+      100vw - var(--control-inset) - var(--control-size) - var(--control-gap) -
+        360px - var(--control-gap) - var(--control-size) - var(--control-gap) -
+        var(--control-inset)
+    );
+  }
+
+  /*
+    Panels drop from their control instead of sliding out beside it.
+
+    To the left of a square is where the neighbouring controls now are, so the
+    old placement covered the home button with the basemap list. Right-aligned
+    to the control it belongs to, which keeps it inside the map.
+  */
+  .map-control-stack .map-legend-panel,
+  .map-control-stack .map-style-control > ul,
+  .map-control-stack .map-language-control > ul {
+    top: calc(100% + var(--control-gap));
+    right: 0;
+  }
+}

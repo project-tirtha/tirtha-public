@@ -11,14 +11,66 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 import os
+import sys
+import tempfile
 
 # Load developer-local settings, when TIRTHA_DEV=1 is set in the environment.
 # To allow running a quick dev environment (SQLite, DEBUG=True) without
 # changing production-local settings.
 if os.getenv("TIRTHA_DEV", "") == "1":
     from .local_settings_dev import *
+elif os.getenv("TIRTHA_DEMO", "") == "1":
+    # Public, read-only demo deployment (internal design notes).
+    from .local_settings_demo import *  # noqa: F403
+elif os.getenv("TIRTHA_BETA", "") == "1":
+    # Beta: a second deployment against restored production data, on SQLite by
+    # default so it needs no privileged database provisioning (internal design notes).
+    from .local_settings_beta import *
 else:
     from .local_settings import *
+
+# Under `manage.py test`, both file roots point at a scratch tree.
+#
+# The test runner substitutes the database and nothing else, so every path
+# setting still names the live deployment. `signals.post_save_site` mkdirs under
+# both roots for every Site a test creates and `post_del_site` rmtrees them
+# again -- and `post_migrate` recreates the default site under a *fixed* ID, so
+# the collision is not left to chance: a suite that deletes its sites deletes
+# the real default site's published model, preview and thumbnail with it, and
+# leaves thousands of stray directories behind. Rollback reverts the rows;
+# nothing reverts the filesystem. Running the suite on the deployment host to
+# verify a deploy, which DEPLOY.md asks for, is enough to do it.
+#
+# Media had this already, in the dev settings, for the milder half of the same
+# problem: only 3 of 34 test modules set their own MEDIA_ROOT and the rest save
+# real FileFields, so one full run left roughly 1,679 fixture files in the media
+# store and fourteen runs added 23,506. Moved here because the destructive half
+# reaches every deployment, not just the one a developer happens to run.
+#
+# In settings rather than in a test runner: `signals.py` and `workers.py` read
+# these roots at import, which is before any runner exists to intervene. The
+# directory is per-run, so a failed run's files can still be inspected, and the
+# OS reclaims them.
+# `sys.argv[1:2]`, not `"test" in sys.argv`: the loose form matches any argument
+# equal to "test" anywhere on the line, so `loaddata test`, `createsuperuser
+# --username test`, or a queue named test would silently redirect a production
+# command's STATIC_ROOT and MEDIA_ROOT at an empty scratch tree -- a command
+# meant to write into the media store writing nowhere. It only has to match the
+# subcommand. (`--parallel` is unaffected: multiprocessing restores argv in
+# spawned children.)
+if sys.argv[1:2] == ["test"]:
+    _TEST_ROOTS = tempfile.mkdtemp(prefix="tirtha-test-roots-")
+    STATIC_ROOT = os.path.join(_TEST_ROOTS, "static")
+    MEDIA_ROOT = os.path.join(_TEST_ROOTS, "media")
+    # The COLMAP workspace too. It defaults to `PROD_DIR/colmap_ws`, and
+    # `PROD_DIR` under the dev settings is `tirtha_bk/prod` -- inside the
+    # repository. So any test that materialised a symlink farm left a directory
+    # per site in the working tree, untracked and never cleaned, which is how
+    # five of them turned up in `git status` after a test run.
+    COLMAP_WORKSPACE_DIR = os.path.join(_TEST_ROOTS, "colmap_ws")
+    os.makedirs(STATIC_ROOT, exist_ok=True)
+    os.makedirs(MEDIA_ROOT, exist_ok=True)
+    os.makedirs(COLMAP_WORKSPACE_DIR, exist_ok=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/

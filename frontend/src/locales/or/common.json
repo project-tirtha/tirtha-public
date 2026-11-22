@@ -1,0 +1,14 @@
+{
+  "appName": "ପ୍ରକଳ୍ପ ତୀର୍ଥ",
+  "beta": "ବିଟା",
+  "buttons": {
+    "contribute": "ଯୋଗଦାନ କରନ୍ତୁ",
+    "requestSite": "ସ୍ଥଳ ଅନୁରୋଧ",
+    "hideInfo": "ସୂଚନା ଲୁଚାନ୍ତୁ",
+    "open": "ଖୋଲନ୍ତୁ"
+  },
+  "placeholders": {
+    "searchModels": "ମଡେଲ ଖୋଜନ୍ତୁ",
+    "searchFor": "{{site}} ଖୋଜନ୍ତୁ"
+  }
+}

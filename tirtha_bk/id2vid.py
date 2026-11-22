@@ -1,8 +1,9 @@
 """
 This is intended to be used as a CLI tool
-to get the verbose ID of a model (mesh), given its ID.
+to get the verbose ID of a model (site), given its ID.
 
 """
+
 import os
 
 import django
@@ -11,28 +12,28 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tirtha_bk.settings")
 django.setup()
 
-from tirtha.models import Mesh
+from tirtha.models import Site
 
 
-def _get_mesh_details(meshID: str) -> dict:
+def _get_site_details(siteID: str) -> dict:
     try:
-        mesh = Mesh.objects.get(ID=meshID)
+        site = Site.objects.get(ID=siteID)
         return {
-            "ID": mesh.ID,
-            "verbose_id": mesh.verbose_id,
-            "status": mesh.status,
-            "completed": mesh.completed,
-            "updated_at": mesh.updated_at.astimezone().strftime(
+            "ID": site.ID,
+            "verbose_id": site.verbose_id,
+            "status": site.status,
+            "completed": site.completed,
+            "updated_at": site.updated_at.astimezone().strftime(
                 "%d %b %Y, %H:%M:%S %Z"
             ),
-            "reconstructed_at": mesh.reconstructed_at.astimezone().strftime(
+            "reconstructed_at": site.reconstructed_at.astimezone().strftime(
                 "%d %b %Y, %H:%M:%S %Z"
             )
-            if mesh.reconstructed_at
+            if site.reconstructed_at
             else None,
         }
-    except Mesh.DoesNotExist as excep:
-        return "Corresponding mesh not found."
+    except Site.DoesNotExist:
+        return "Corresponding site not found."
 
 
 if __name__ == "__main__":
@@ -42,13 +43,13 @@ if __name__ == "__main__":
     from rich.table import Table
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("meshID", help="Mesh ID")
+    parser.add_argument("siteID", help="Site ID")
     args = parser.parse_args()
 
     cons = Console()
-    cons.rule("Mesh Details")
+    cons.rule("Site Details")
 
-    dct = _get_mesh_details(args.meshID)
+    dct = _get_site_details(args.siteID)
 
     tab = Table(show_header=False)
     for key, value in dct.items():

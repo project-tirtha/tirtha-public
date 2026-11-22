@@ -1,0 +1,32 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Never a tracked .env. The one that used to be here held only a Google OAuth
+# client ID -- public by design, and dead since the GIS flow was removed -- but
+# the internal secrets register 5 says not to track this file at all, and gitleaks did not stop it.
+# The next VITE_ variable somebody adds may not be public by design.
+.env
+.env.*
+!.env.example

@@ -1,0 +1,64 @@
+{
+  "_comment": [
+    "What the public site shows. Edit this file, then run build/refresh-prod.sh",
+    "(or refresh-demo.sh). No code change and no rebuild of the backend.",
+    "",
+    "Every value here has been something we changed our minds about at least",
+    "once. That is the point: these are decisions, not constants, and they",
+    "belong somewhere a maintainer can reach without a diff.",
+    "",
+    "A deployment can override any of these in its local_settings.py with",
+    "DISPLAY_CONFIG = {...}; anything absent falls back to what is here, so a",
+    "key added later cannot break a deployment that has not heard of it."
+  ],
+
+  "animatedPreviews": {
+    "_doc": [
+      "Hovering a pin shows a two-second orbit rendered from the published",
+      "model, instead of a still photograph. false shows the 160px still.",
+      "",
+      "Rendered by `manage.py backfill_turntables`; a site with no rendered",
+      "orbit falls back to the still whatever this says. Roughly a third of",
+      "the rendered ones show haze rather than a monument, which is a property",
+      "of those reconstructions rather than of the renderer -- review them at",
+      "a sample of them before turning this on for a",
+      "wider audience."
+    ],
+    "value": true
+  },
+
+  "showBetaBadge": {
+    "_doc": [
+      "The 'Beta' chip beside the wordmark.",
+      "",
+      "null means decide automatically: shown on the demo and on beta, hidden",
+      "on production. true or false overrides that everywhere. It was",
+      "unconditional once, which would have told every production visitor the",
+      "archive is provisional."
+    ],
+    "value": null
+  },
+
+  "offeredLanguages": {
+    "_doc": [
+      "Which languages the switcher offers. The server still serves any of",
+      "them by URL, and an existing /hi/ link keeps working -- this controls",
+      "what is advertised, not what resolves.",
+      "",
+      "Hindi is withheld: its translations are drafted but unreviewed."
+    ],
+    "value": ["en", "or"]
+  },
+
+  "mapClusterRadius": {
+    "_doc": [
+      "How close two pins must be, in pixels, before the map merges them.",
+      "",
+      "60 was MapLibre's default and clustered pins that did not visually",
+      "overlap, so a cluster appeared where two separate temples were plainly",
+      "distinguishable. 28 is about one pin's width: if they do not overlap,",
+      "they are not a cluster."
+    ],
+    "value": 28
+  }
+}

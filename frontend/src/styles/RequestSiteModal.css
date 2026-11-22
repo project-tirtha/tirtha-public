@@ -1,0 +1,211 @@
+/*
+ * Was a template literal injected as `<style>{modalStyles}</style>` inside the
+ * component. That needs `style-src 'unsafe-inline'` to render at all, and
+ * relaxing style-src for one form weakens it for the whole document -- an
+ * injected `<style>` is a real exfiltration channel (attribute selectors with
+ * background-image URLs read out form values). It also re-parsed the whole
+ * sheet on every render of the modal.
+ */
+
+.request-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 45%);
+  padding: 16px;
+}
+
+.request-modal-card {
+  position: relative;
+  width: min(700px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 16px;
+  background: var(--bg-primary, var(--surface-raised));
+  color: var(--text-primary, var(--text-primary));
+  box-shadow: 0 8px 32px rgb(0 0 0 / 18%);
+}
+
+.request-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  /* 44x44 is the pointer target minimum (WCAG 2.5.8); it was a bare glyph. */
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-size: 1.3rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.request-modal-close:hover {
+  background: var(--bg-hover, #f3f4f6);
+}
+
+.request-modal-title {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.request-modal-hint {
+  margin: 0 0 18px;
+  font-size: 0.9rem;
+  /* #555 on white is 7.5:1, but on the dark theme's card it was unreadable. */
+  color: var(--text-secondary, #4b5563);
+}
+
+.request-modal-form fieldset {
+  margin: 0 0 20px;
+  padding: 0;
+  border: none;
+}
+
+.request-modal-form legend {
+  padding: 0;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.request-modal-form label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.request-modal-form input[type='text'],
+.request-modal-form input[type='email'],
+.request-modal-form input[type='url'],
+.request-modal-form input:not([type]),
+.request-modal-form select,
+.request-modal-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border: 1.5px solid var(--border-color, var(--border-color));
+  border-radius: 8px;
+  background: var(--bg-input, #fafbfc);
+  color: inherit;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.request-modal-form textarea {
+  resize: vertical;
+  min-height: 88px;
+}
+
+/* A visible focus ring, on everything. The previous sheet set none, so a
+   keyboard user could not tell which of eleven controls they were in (2.4.7). */
+.request-modal-form :focus-visible,
+.request-modal-close:focus-visible,
+.request-modal-actions button:focus-visible {
+  outline: 3px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+.request-modal-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.request-modal-help {
+  margin: -8px 0 14px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #4b5563);
+}
+
+.request-modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.request-modal-check input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--btn-primary-bg, #2563eb);
+  flex: none;
+}
+
+.request-modal-check label {
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Colour is not the only carrier: each is prefixed by an icon and announced
+   through role="alert" / role="status" (WCAG 1.4.1). */
+.request-modal-error,
+.request-modal-success {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.request-modal-error {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+}
+
+.request-modal-error::before {
+  content: '⚠ ';
+}
+
+.request-modal-success {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success-text);
+}
+
+.request-modal-success::before {
+  content: '✓ ';
+}
+
+.request-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.request-modal-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid var(--border-color, var(--border-color));
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.request-modal-actions button.btn-primary {
+  border-color: transparent;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.request-modal-actions button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .request-modal-card {
+    padding: 20px 16px;
+  }
+}

@@ -1,0 +1,56 @@
+{% comment %}
+Chrome-free embeddable viewer (internal design notes).
+
+The attribution strip is not decoration. Models are CC BY-NC-SA 4.0, and an
+embed is precisely where attribution gets lost -- the surrounding page is
+someone else's. Credit and licence are rendered *inside* the iframe so they
+travel with the model wherever it is placed.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="tirtha-prefix" content="{{ url_prefix }}">
+  <title>{{ site.name }} — Project Tirtha</title>
+  <link rel="canonical" href="{{ canonical_url }}">
+  {% for href in vite_css %}<link rel="stylesheet" href="{{ href }}">{% endfor %}
+  <style nonce="{{ request.csp_nonce }}">
+    html, body { margin: 0; height: 100%; background: #101010; color: #f5f5f5;
+                 font-family: system-ui, sans-serif; }
+    #root { height: 100%; }
+    .tirtha-credit {
+      position: fixed; inset: auto 0 0 0; display: flex; gap: .5rem;
+      align-items: center; justify-content: space-between;
+      padding: .4rem .7rem; font-size: 12px; line-height: 1.3;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+    }
+    .tirtha-credit a { color: #f0c07a; }
+  </style>
+</head>
+<body>
+  {% comment %}
+  Read by `frontend/src/main.jsx` (`readEmbedConfig`), which mounts only the
+  viewer. The site and run ids let it fetch the run's camera and its
+  viewer-readable file; `data-embed-model` is the fallback if that fails.
+  {% endcomment %}
+  <div id="root"
+       data-embed-model="{{ model_url|default:'' }}"
+       data-embed-kind="{{ run.kind }}"
+       data-embed-site="{{ site.ID }}"
+       data-embed-run="{{ run.ID }}"></div>
+
+  <div class="tirtha-credit">
+    <span>
+      <a href="{{ canonical_url }}" target="_blank" rel="noopener">{{ site.name }}</a>
+      {% if contributors %}· {{ contributors|join:", " }}{% endif %}
+    </span>
+    <span>
+      <a href="{{ licence_url }}" target="_blank" rel="noopener license">{{ licence_name }}</a>
+    </span>
+  </div>
+
+  <noscript><p>This 3D model needs JavaScript. <a href="{{ canonical_url }}" target="_blank" rel="noopener">Open it on Project Tirtha</a>.</p></noscript>
+  {% for src in vite_js %}<script type="module" src="{{ src }}"></script>{% endfor %}
+</body>
+</html>

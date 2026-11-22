@@ -1,0 +1,22 @@
+/*
+ * Sizing for the inline icons.
+ *
+ * `width="1em"` as an *attribute* is the weakest sizing an SVG has: it loses to
+ * any CSS, and inside a flex container it loses to flex-shrink, which is what
+ * happened -- the icons measured 0 wide and 20 tall, painted the right colour,
+ * with their path present and nothing visible. Four buttons rendered as empty
+ * circles.
+ *
+ * `flex: none` is the part that actually matters; the rest is so a bare icon
+ * behaves like the glyph it replaces.
+ */
+svg.material-icons {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  display: inline-block;
+  vertical-align: -0.125em;
+  /* The font-size rules that already target `.material-icons` set the size, so
+     an icon with no rule of its own matches the text beside it. */
+  font-size: inherit;
+}

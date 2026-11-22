@@ -1,15 +1,37 @@
-{% load static %}
-<link rel="shortcut icon" type="image/png" href="{% static 'favicon.ico' %}"/>
-<link rel="stylesheet" href="{% static 'css/styles.css' %}">
-
-{% block banner %}
-<div id="banner">
-    <h2>500: Internal server error. Redirecting to https://smlab.niser.ac.in/project/tirtha/...</h2>
-    <script>
-        // Redirect to home after 3 seconds
-        setTimeout(function() {
-            window.location.href = "https://smlab.niser.ac.in/project/tirtha/";
-        }, 3000);
-    </script>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <!--
+    Error page, rendered by tirtha_bk.views.handler500. build/build.sh
+    renders it to static HTML for nginx with `manage.py render_error_pages`,
+    so it is never served raw. No script and
+    no auto-redirect (CSP blocks inline scripts, and a page that moves on its
+    own gives nobody time to read it). Links target _top because an /embed/
+    iframe shows this page for a missing site.
+  -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>500: Server error | Project Tirtha</title>
+  <style nonce="{{ request.csp_nonce }}">
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f7f4ef; color: #1d1b18;
+           display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; min-height: 100dvh; padding: 1rem; box-sizing: border-box; }
+    main { max-width: 32rem; text-align: center; }
+    h1 { font-size: 1.5rem; margin: 0 0 .75rem; }
+    p { line-height: 1.5; }
+    a { color: #8a3b00; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #151412; color: #f1ede6; }
+      a { color: #f0c07a; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>500: Server error</h1>
+    <p>Something went wrong on our side. Please try again in a few minutes.</p>
+    <p><a href="{% url 'index' %}" target="_top">Go to the Project Tirtha map</a></p>
+  </main>
+</body>
+</html>

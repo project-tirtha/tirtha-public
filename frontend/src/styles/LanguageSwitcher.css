@@ -1,0 +1,57 @@
+/*
+  A segmented control, not three underlined links.
+
+  It was a row of underlined text with the current language underlined again --
+  the 2010 pattern, and the most dated element left in the panel once its cream
+  gradient had gone. A segment group says "these are the options, this is the
+  one in force" in the shape people already read, and it costs less vertical
+  room in a header that was spending too much of it.
+
+  The current language is still not marked by colour alone: it carries
+  `aria-current`, and its segment has a filled ground rather than a hue shift.
+*/
+.language-switcher ul {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0;
+  padding: 3px;
+  list-style: none;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+}
+
+.language-switcher a {
+  display: block;
+  /* Comfortable to hit (WCAG 2.5.8) without the 44px box the old links needed,
+     because the segment group gives them a shared, obvious target area. */
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.language-switcher a:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.language-switcher a.is-current {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px var(--shadow-sm);
+}
+
+.language-switcher a:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.sidebar-language {
+  padding: 0 12px 10px;
+}

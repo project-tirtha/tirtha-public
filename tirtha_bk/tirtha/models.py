@@ -1,8 +1,13 @@
+import logging
 import os
 import uuid
-import pytz
+from pathlib import Path
 
+import pytz
+from django.conf import settings
 from django.db import models
+from django.db.models.functions import Now
+from django.utils import timezone
 from PIL import Image as PILImage
 from PIL import ImageOps
 from shortuuid.django_fields import ShortUUIDField
@@ -32,10 +37,10 @@ def set_thumbnail(obj, filename):
     return os.path.join(upload_to, filename)
 
 
-class Mesh(models.Model):
+class Site(models.Model):
     # Short for ease of use
     ID = ShortUUIDField(
-        primary_key=True, length=16, max_length=16, verbose_name="Mesh ID"
+        primary_key=True, length=16, max_length=16, verbose_name="Site ID"
     )
 
     # Metadata
@@ -49,10 +54,10 @@ class Mesh(models.Model):
     district = models.CharField(max_length=200, blank=False, default="Khordha")
 
     preview = models.ImageField(
-        upload_to=set_preview, blank=False, verbose_name="Mesh Preview"
+        upload_to=set_preview, blank=False, verbose_name="Site Preview"
     )
     thumbnail = models.ImageField(
-        upload_to=set_thumbnail, blank=False, verbose_name="Mesh Thumbnail"
+        upload_to=set_thumbnail, blank=False, verbose_name="Site Thumbnail"
     )
 
     # Auto-generated - Used for most tasks
@@ -75,25 +80,25 @@ class Mesh(models.Model):
         max_length=50, blank=False, choices=status_options, default="Pending"
     )
 
-    # Whether the mesh is accepting images any more
+    # Whether the site is accepting images any more
     completed = models.BooleanField(default=False, verbose_name="Completed")
     # Whether to hide the model from the frontend
     hidden = models.BooleanField(default=False, verbose_name="Hidden")
 
-    # NOTE: Directory structure: [S_DIR] = STATIC_ROOT / models | [M_DIR] = MEDIA_ROOT / models | [ID] = Mesh ID
+    # NOTE: Directory structure: [S_DIR] = STATIC_ROOT / models | [M_DIR] = MEDIA_ROOT / models | [ID] = Site ID
     # [M_DIR]/[ID]/images/ <- Images are uploaded here by default
     # [M_DIR]/[ID]_thumb.[image ext] file - Thumbnail <- Shown in list
     # [M_DIR]/[ID]_prev.[image ext] file - Preview <- Shown in viewer
     # [S_DIR]/[ID]/{kind}cache/[RUN_ID]/ <- MeshOps cache
-    # [S_DIR]/[ID]/[ID]_deci.glb <- Decimated mesh
-    # FIXME: NOTE: obj2gltf bug for converting meshes above ~2.1 GB to .glb.
+    # [S_DIR]/[ID]/[ID]_deci.glb <- Decimated site
+    # FIXME: NOTE: obj2gltf bug for converting sites above ~2.1 GB to .glb.
     # Other option is .gltf, but then no single texture-maps.
 
     ## Reconstruction settings
     # NOTE: center_image is admin-only.
     # If need be, an admin can set the filename (no ext)
     # of an image in the .../images/ folder.
-    # This feeds into sfmTransform(center_image) to orient the mesh with.
+    # This feeds into sfmTransform(center_image) to orient the site with.
     center_image = models.CharField(
         max_length=200, blank=True, verbose_name="Center Image"
     )
@@ -105,11 +110,75 @@ class Mesh(models.Model):
     # Ideally, we do not want to sfmRotate for each new run.
     # NOTE: Use orientMesh to trigger sfmRotate (if needed or if center_image is
     # not working well), when model is "complete", then reset rota* to 0.
-    orientMesh = models.BooleanField(default=False, verbose_name="Orient Mesh")
+    orientMesh = models.BooleanField(default=False, verbose_name="Orient Site")
     minObsAng = models.IntegerField(
         default=30, verbose_name="Minimum Observation Angle"
     )
     denoise = models.BooleanField(default=False, verbose_name="Denoise")
+
+    ## Classification
+    categories = models.ManyToManyField(
+        "Category",
+        blank=True,
+        related_name="sites",
+        verbose_name="Categories",
+    )
+    # The tags a category assignment was derived from, kept so the mapping can be
+    # re-derived without going back to Overpass (internal design notes).
+    osm_tags = models.JSONField(default=dict, blank=True, verbose_name="Raw OSM tags")
+
+    ## Location
+    # The stored coordinate is authoritative for rendering. Overpass is a seeding
+    # tool, an enrichment link and the discovery layer -- never the runtime source
+    # (internal design notes): a self-hosted mirror still syncs upstream diffs, so an
+    # unpinned marker could move because a mapper retagged something last week.
+    latitude = models.FloatField(blank=True, null=True, verbose_name="Latitude")
+    longitude = models.FloatField(blank=True, null=True, verbose_name="Longitude")
+
+    location_source_options = [
+        ("manual", "Manual"),
+        ("osm", "OpenStreetMap"),
+        ("wikidata", "Wikidata"),
+        ("exif", "EXIF"),
+        ("site_request", "Site request"),
+    ]
+    # Provenance does double duty: it says what is safe to overwrite in a bulk
+    # re-backfill, and it records licence obligations -- OSM is ODbL and
+    # share-alike attaches, Wikidata is CC0 (internal design notes).
+    location_source = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=location_source_options,
+        verbose_name="Coordinate source",
+    )
+
+    # Durable cross-walk. Stable by policy: merged items leave redirects, which is
+    # not true of a deleted-and-recreated OSM way.
+    wikidata_qid = models.CharField(
+        max_length=32, blank=True, verbose_name="Wikidata QID"
+    )
+
+    osm_type_options = [("node", "Node"), ("way", "Way"), ("relation", "Relation")]
+    osm_type = models.CharField(
+        max_length=10, blank=True, choices=osm_type_options, verbose_name="OSM type"
+    )
+    osm_id = models.BigIntegerField(blank=True, null=True, verbose_name="OSM ID")
+    # Drift detection by integer compare: "resolved at v7, mirror says v9 -> review".
+    # Requires OVERPASS_META=yes on the mirror (internal design notes).
+    osm_version = models.IntegerField(
+        blank=True, null=True, verbose_name="OSM element version"
+    )
+    location_verified_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Location last verified at"
+    )
+
+    ## Map framing
+    # Run already stores per-run 3D camera parameters; the map deserves the same,
+    # so flying to a site frames it rather than dropping the viewer at zoom 16
+    # north-up (internal design notes).
+    default_zoom = models.FloatField(default=16.0, verbose_name="Default map zoom")
+    default_bearing = models.FloatField(default=0.0, verbose_name="Default map bearing")
+    default_pitch = models.FloatField(default=45.0, verbose_name="Default map pitch")
 
     # Set automatically
     created_at = models.DateTimeField("Created at", auto_now_add=True)
@@ -118,16 +187,79 @@ class Mesh(models.Model):
         "Last reconstructed at", blank=True, null=True
     )
 
+    ## Scheduler state (review 2026-11-22 §2)
+    # Set when `schedule_reconstructions_task` enqueues a reconstruction, and
+    # cleared when the run starts (`signals.post_save_run`) or the task ends.
+    # A `Run` row only exists once the task starts, so without this a site
+    # still waiting in the `recon` queue looked un-reconstructed to the next
+    # pass and was enqueued again -- a duplicate full retrain.
+    recon_queued_at = models.DateTimeField(
+        "Reconstruction queued at",
+        blank=True,
+        null=True,
+        help_text="Set by the scheduler when a reconstruction is enqueued; "
+        "cleared when it starts. Clear it by hand only if the queued task was lost.",
+    )
+    # Failures before this instant do not count towards the back-off
+    # (`RECON_MAX_CONSECUTIVE_FAILURES`, and the cool-down in
+    # `scheduler.cooldown_for`). Setting it to now is the manual reset; a
+    # successful run resets the count by itself, and a cool-down expires on
+    # its own.
+    recon_failures_reset_at = models.DateTimeField(
+        "Failure back-off reset at",
+        blank=True,
+        null=True,
+        help_text="Set to now to let the scheduler retry a site now, rather "
+        "than when its cool-down after repeated failed reconstructions ends.",
+    )
+
     class Meta:
         ordering = ["-updated_at"]
-        verbose_name_plural = "Meshes"
+        verbose_name_plural = "Sites"
+        # Checked by `admin._may` for the actions that publish or hide a site.
+        permissions = [("publish_site", "Can publish, hide or complete sites")]
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        # Remembered so `save()` can tell whether the thumbnail changed.
+        if "thumbnail" in instance.__dict__:
+            # The *name*, as a string: by now the value may already be the
+            # FieldFile object itself, whose `.name` changes in place when a new
+            # file is saved -- comparing against it would never see a change.
+            loaded = instance.__dict__["thumbnail"]
+            instance._loaded_thumbnail = getattr(loaded, "name", loaded) or ""
+        return instance
+
+    def _thumbnail_changed(self) -> bool:
+        """
+        Whether `thumbnail` is new since this instance was loaded.
+
+        Checked *before* `super().save()`: the FileField's `pre_save` commits a
+        pending upload, after which `_committed` no longer tells the two apart.
+        """
+        if not self.thumbnail:
+            return False
+        if not getattr(self.thumbnail, "_committed", True):
+            return True
+        if self._state.adding:
+            return True
+        if not hasattr(self, "_loaded_thumbnail"):
+            # Loaded with the column deferred: ask the database instead.
+            self._loaded_thumbnail = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values_list("thumbnail", flat=True)
+                .first()
+            ) or ""
+        return (self._loaded_thumbnail or "") != self.thumbnail.name
 
     def __str__(self):
         return self.verbose_id
 
     def __repr__(self):
         return f"""
-                Mesh(
+                Site(
                     {self.ID},
                     {self.name},
                     {self.description},
@@ -141,16 +273,70 @@ class Mesh(models.Model):
                 """
 
     def save(self, *args, **kwargs):
+        # `name` is translated (tirtha/translation.py), so reading it returns the
+        # active language's value -- which would make verbose_id vary per request.
+        # It is an identifier, so it is built from the base-language column
+        # explicitly. See internal design notes and 2.2.
+        base_name = getattr(self, "name_en", None) or self.name
+        previous = self.verbose_id
         self.verbose_id = (
-            self.country + "__" + self.state + "__" + self.district + "__" + self.name
+            self.country + "__" + self.state + "__" + self.district + "__" + base_name
         ).replace(" ", "_")
-        super().save(*args, **kwargs)
 
-        # Resizes & compresses preview image
-        if self.thumbnail:
-            # Load the uploaded image
-            image = PILImage.open(self.thumbnail.path)
-            image = ImageOps.exif_transpose(image)
+        # Retire the old slug so its URLs keep resolving. Guarded against the
+        # placeholder default and against re-recording an unchanged slug.
+        retire = (
+            previous
+            and previous != self.verbose_id
+            and not previous.startswith("<auto-generated")
+        )
+        thumbnail_changed = self._thumbnail_changed()
+        super().save(*args, **kwargs)
+        if retire:
+            SiteSlugHistory.objects.get_or_create(
+                slug=previous, defaults={"site": self}
+            )
+
+        # Only a *new* thumbnail is processed (review 2026-11-22 §1 #9).
+        #
+        # This ran on every save -- each upload, three times per run -- and
+        # re-encoded the stored file at quality 60 each time, so a JPEG
+        # thumbnail lost quality on every pass. A missing file raised here,
+        # *after* the row was written, which failed uploads and marked
+        # successfully published runs as Error. Now it is best-effort: the row
+        # is the record, the file is decoration.
+        if thumbnail_changed:
+            try:
+                self._process_thumbnail()
+            except Exception:  # noqa: BLE001 - see above
+                logging.warning(
+                    "Could not process thumbnail for site %s", self.pk, exc_info=True
+                )
+            self._loaded_thumbnail = self.thumbnail.name
+
+        # Small copies for the map's hover previews and for list rows. Written
+        # after the resize above, so they derive from the stored image rather
+        # than the upload. Also re-derived when one is missing, which is two
+        # `stat` calls rather than a decode.
+        if thumbnail_changed or self._derivatives_missing():
+            write_thumbnail_derivatives(self)
+
+    def _derivatives_missing(self) -> bool:
+        if not self.thumbnail:
+            return False
+        try:
+            base = Path(self.thumbnail.path).parent
+        except Exception:  # noqa: BLE001
+            return False
+        return any(
+            not (base / Path(derivative_path(self.thumbnail.name, kind)).name).exists()
+            for kind in THUMBNAIL_DERIVATIVES
+        )
+
+    def _process_thumbnail(self) -> None:
+        """Resize the stored thumbnail to ~400px on its short side, once."""
+        with PILImage.open(self.thumbnail.path) as opened:
+            image = ImageOps.exif_transpose(opened)
             aspect_ratio = image.width / image.height
             new_width = image.width
             new_height = image.height
@@ -165,14 +351,162 @@ class Mesh(models.Model):
                     new_width = min_dimension
                     new_height = max(min_dimension, int(min_dimension / aspect_ratio))
 
-            # Resize
             resized_image = image.resize((new_width, new_height))
 
-            # Save the resized image at 60% quality
-            resized_image.save(self.thumbnail.path, quality=60)
-            resized_image.close()
+        # Save the resized image at 60% quality
+        resized_image.save(self.thumbnail.path, quality=60)
+        resized_image.close()
 
-            super().save(*args, **kwargs)
+        # No second `super().save()` here.
+        #
+        # The resize rewrites the bytes at `self.thumbnail.path`; it does
+        # not change `thumbnail.name` or any other column, so there was
+        # nothing to persist. What it did do was re-run the save with the
+        # *same* kwargs -- and `Site.objects.create()` passes
+        # `force_insert=True`, so the second call issued a second INSERT
+        # and raised `UNIQUE constraint failed: tirtha_site.verbose_id`.
+        #
+        # Creating a site and giving it a thumbnail in one statement was
+        # therefore impossible. Two-step creation happened to work, which
+        # is why the admin never hit it.
+
+
+# Derivative sizes for the site thumbnail, keyed by the suffix their file takes.
+#
+# The stored thumbnail is ~400px on its short side and weighs about 420 KB,
+# which is fine for one panel header and hopeless for a hover: a cluster of
+# fourteen would pull 4.9 MB before the pointer had settled. These are written
+# beside it, as WebP, and derived from the same source.
+#
+# By convention rather than by new model fields, so there is no migration and no
+# second thing to keep in step: the path is the thumbnail's own with a suffix,
+# and `api.serialize_site` offers each one only when the file is actually there.
+THUMBNAIL_DERIVATIVES = {
+    # The hover tile. Square, because a contact sheet of mixed aspect ratios
+    # reads as a mess.
+    "preview": (160, 160),
+    # A row or card image, at 4:3.
+    "card": (360, 270),
+}
+
+
+def derivative_path(thumbnail_name: str, kind: str) -> str:
+    """Where a derivative lives, given the thumbnail's storage name."""
+    stem = thumbnail_name.rsplit(".", 1)[0]
+    return f"{stem}__{kind}.webp"
+
+
+def write_thumbnail_derivatives(instance) -> list[str]:
+    """
+    Write the derivatives for one site, returning the names it produced.
+
+    Cropped to fill rather than letterboxed: these are decoration beside a name,
+    and a tile of bars is worse than a tile that loses a little sky. `ImageOps.fit`
+    centres the crop, which is where a photograph of a building usually is.
+
+    Failure is not fatal. A thumbnail that Pillow cannot open should not stop a
+    site being saved -- the derivative is an enhancement, and `serialize_site`
+    simply does not offer what is not on disk.
+    """
+    if not instance.thumbnail:
+        return []
+
+    written = []
+    try:
+        source = PILImage.open(instance.thumbnail.path)
+        source = ImageOps.exif_transpose(source).convert("RGB")
+    except Exception:  # noqa: BLE001 - see the docstring
+        logging.warning("Could not read thumbnail for %s", instance.pk)
+        return []
+
+    base = Path(instance.thumbnail.path).parent
+    for kind, size in THUMBNAIL_DERIVATIVES.items():
+        name = derivative_path(instance.thumbnail.name, kind)
+        try:
+            tile = ImageOps.fit(source, size, PILImage.LANCZOS)
+            # `quality` is honoured by WebP, unlike the PNG path above it, where
+            # `quality=60` has never done anything at all.
+            tile.save(base / Path(name).name, "WEBP", quality=72, method=4)
+            tile.close()
+            written.append(name)
+        except Exception:  # noqa: BLE001
+            logging.warning("Could not write %s derivative for %s", kind, instance.pk)
+    source.close()
+    return written
+
+
+class Category(models.Model):
+    """
+    What kind of place a Site is -- temple, fort, stupa, cave, museum.
+
+    Many-to-many, not a choice field: a fort can contain a temple, and Dhauli is
+    both a stupa and a rock edict. A single-valued field would force a false
+    choice on exactly the sites that are most interesting (internal design notes).
+
+    Categories are derived from OSM tags where possible, which is why Site keeps
+    the raw tags: the mapping can be re-derived later without re-querying
+    Overpass.
+    """
+
+    slug = models.SlugField(max_length=64, primary_key=True, verbose_name="Slug")
+    name = models.CharField(max_length=100, verbose_name="Name")
+    # Feeds the map marker glyph. Category drives the icon; run status drives the
+    # colour -- spending colour on both makes the legend unreadable (internal design notes).
+    icon = models.CharField(
+        max_length=64,
+        blank=True,
+        verbose_name="Map icon",
+        help_text="Icon identifier used for the map marker glyph.",
+    )
+    description = models.TextField(blank=True, verbose_name="Description")
+    # OSM tag expressions this category is derived from, e.g.
+    # ["historic=fort", "amenity=place_of_worship+religion=hindu"].
+    osm_tags = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Source OSM tags",
+        help_text="Tag expressions this category is derived from.",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "Categories"
+
+    def __str__(self):
+        return self.name
+
+
+class SiteSlugHistory(models.Model):
+    """
+    Slugs a `Site` used to be reachable at.
+
+    `verbose_id` is derived from four mutable fields, so it changes whenever a
+    site is renamed or its administrative location is corrected -- and Phase 3
+    renames 39 of 60 sites. Routing on it would turn every such edit into a dead
+    URL.
+
+    Canonical URLs use `Site.ID`, which never changes. This table lets a retired
+    slug still resolve, redirecting to the canonical URL rather than 404ing, for
+    as many renames as a site ever goes through (internal design notes).
+    """
+
+    slug = models.CharField(
+        max_length=200, primary_key=True, verbose_name="Retired slug"
+    )
+    site = models.ForeignKey(
+        "Site",
+        on_delete=models.CASCADE,
+        related_name="slug_history",
+        verbose_name="Site",
+    )
+    retired_at = models.DateTimeField(auto_now_add=True, verbose_name="Retired at")
+
+    class Meta:
+        ordering = ["-retired_at"]
+        verbose_name_plural = "Site slug history"
+
+    def __str__(self):
+        return f"{self.slug} -> {self.site_id}"
 
 
 class Contributor(models.Model):
@@ -180,9 +514,40 @@ class Contributor(models.Model):
         primary_key=True, default=uuid.uuid4, verbose_name="Contributor ID"
     )
 
-    # Populated via Google SO / admin panel
+    # Auth lives on django.contrib.auth.User; domain concerns stay here.
+    # A OneToOne rather than switching AUTH_USER_MODEL: Contributor.ID is a UUID
+    # already referenced by Contribution and by Run's M2M across three years of
+    # production data, and Django documents mid-project AUTH_USER_MODEL changes
+    # as extremely painful (internal design notes).
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="contributor",
+        verbose_name="Login account",
+    )
+
+    # Populated via Google SSO / admin panel
     name = models.CharField(max_length=200)
-    email = models.EmailField()
+    # Unique because accounts require it. Production has zero duplicates across
+    # 84 contributors, so no dedupe step is needed (verified 2026-08-29).
+    email = models.EmailField(unique=True)
+
+    ## Public profile -- opt-in
+    # Contributors consented to contribute, not to a public page listing what
+    # they contributed and where. That is a new disclosure, so it defaults off
+    # and India's DPDP Act applies (internal design notes).
+    profile_public = models.BooleanField(default=False, verbose_name="Public profile")
+    # Shown instead of the Google-supplied name, so a contributor can be
+    # pseudonymous while still contributing.
+    display_name = models.CharField(
+        max_length=100, blank=True, verbose_name="Display name"
+    )
+    # Profile URLs use the handle -- never the UUID, never the email.
+    handle = models.SlugField(
+        max_length=50, blank=True, null=True, unique=True, verbose_name="Handle"
+    )
 
     active = models.BooleanField(default=True, verbose_name="Active?")
 
@@ -197,6 +562,21 @@ class Contributor(models.Model):
     class Meta:
         ordering = ["name"]
         verbose_name_plural = "Contributors"
+        permissions = [
+            ("moderate_contributor", "Can activate, ban or unban contributors")
+        ]
+
+    @property
+    def public_name(self) -> str:
+        """
+        What a public surface may display.
+
+        Never the email, and never the Google-supplied name unless the
+        contributor opted in (internal design notes).
+        """
+        if not self.profile_public:
+            return "Anonymous contributor"
+        return self.display_name or self.name
 
     def __str__(self):
         return self.email
@@ -219,15 +599,20 @@ class Contribution(models.Model):
     ID = models.UUIDField(
         primary_key=True, default=uuid.uuid4, verbose_name="Contribution ID"
     )
-    mesh = models.ForeignKey(
-        Mesh,
+    site = models.ForeignKey(
+        Site,
         on_delete=models.CASCADE,
-        verbose_name="Mesh ID",
+        verbose_name="Site ID",
         related_name="contributions",
     )
+    # PROTECT, not CASCADE (review 2026-11-22 §4). Deleting a contributor
+    # cascaded to their contributions, images and files, and pulled those
+    # images out of runs that are already published under an ARK. A
+    # contributor who wants to leave is anonymised instead; one who never
+    # contributed is still removable (`db_cleanup_task`).
     contributor = models.ForeignKey(
         Contributor,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         verbose_name="Contributor ID",
         related_name="contributions",
     )
@@ -238,10 +623,62 @@ class Contribution(models.Model):
     processed_at = models.DateTimeField(
         blank=True, null=True, verbose_name="Processed Timestamp"
     )
+    # When ingest (ImageOps, or the video extraction that enqueues it) was last
+    # enqueued for this contribution: by the upload view, the admin trigger or
+    # the stuck-ingest sweep. The sweep skips a contribution enqueued within
+    # `IMAGEOPS_STUCK_AFTER_MINUTES`, so it does not stack duplicate messages
+    # behind one that is merely waiting in a busy queue.
+    imageops_enqueued_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Ingest last enqueued at"
+    )
+    # Batched uploads. A contribution arriving in several requests is *open*
+    # (`finalized_at` is NULL) until the client calls `upload/finish/`, or
+    # until `finalize_abandoned_uploads_task` decides it was abandoned. Nothing
+    # downstream -- ImageOps, the scheduler, `reconstructable_images`, the
+    # stuck-ingest sweep -- looks at an open one.
+    #
+    # Defaults to now -- in Python *and* in the database -- so every other
+    # creator (the legacy one-POST upload, the admin, a shell, the tests, and
+    # the previous release's code, whose INSERT does not name this column at
+    # all) makes a finalized contribution without having to know this field
+    # exists. Only the batched upload opens one, by writing NULL explicitly.
+    finalized_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        default=timezone.now,
+        db_default=Now(),
+        db_index=True,
+        verbose_name="Upload finalized at",
+    )
+    # When the last batch of an open upload arrived; the idle clock for
+    # `UPLOAD_OPEN_TTL_MINUTES`. NULL means "no batch since creation".
+    last_batch_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Last upload batch at"
+    )
+    # Batches of an open upload that the client has *acknowledged*: each batch
+    # request naming this contribution's id proves the client received the
+    # answer to the one before. Zero means the client may never have learnt
+    # the id (a Cancel or a closed tab during the first batch), so the
+    # abandoned-upload sweep deletes such an upload rather than finalizing it.
+    #
+    # Both counters carry a database default as well, so an INSERT from code
+    # that predates them (a worker not yet restarted) still succeeds.
+    confirmed_batches = models.PositiveIntegerField(
+        default=0, db_default=0, verbose_name="Batches acknowledged by the client"
+    )
+    # Bytes received for this contribution, as sent (before any conversion);
+    # bounds an open upload by `UPLOAD_MAX_BYTES_PER_CONTRIBUTION`.
+    received_bytes = models.BigIntegerField(
+        default=0, db_default=0, verbose_name="Bytes received"
+    )
 
     class Meta:
         ordering = ["-contributed_at"]
         verbose_name_plural = "Contributions"
+
+    @property
+    def is_open(self) -> bool:
+        return self.finalized_at is None
 
     def __str__(self):
         return f"{self.ID}"
@@ -250,7 +687,7 @@ class Contribution(models.Model):
         return f"""
                 Contribution(
                     {self.ID},
-                    {self.mesh},
+                    {self.site},
                     {self.contributor},
                     {self.contributed_at},
                     {self.processed},
@@ -259,11 +696,78 @@ class Contribution(models.Model):
                 """
 
 
-def set_image(obj, filename):
-    upload_to = f"models/{obj.contribution.mesh.ID}/images"
+def set_video(obj, filename):
+    upload_to = f"models/{obj.contribution.site.ID}/videos"
     filename = f"{str(obj.ID)}.{filename.split('.')[-1].lower()}"
 
     return os.path.join(upload_to, filename)
+
+
+def set_image(obj, filename):
+    upload_to = f"models/{obj.contribution.site.ID}/images"
+    filename = f"{str(obj.ID)}.{filename.split('.')[-1].lower()}"
+
+    return os.path.join(upload_to, filename)
+
+
+def set_mask(obj, filename):
+    """
+    Masks live beside the images they belong to, keyed on the same ID.
+
+    Always `.png`: COLMAP requires it, and a mask is a binary stencil for which
+    a lossy format would be actively wrong (internal design notes).
+    """
+    upload_to = f"models/{obj.contribution.site.ID}/masks"
+    return os.path.join(upload_to, f"{str(obj.ID)}.png")
+
+
+class SourceVideo(models.Model):
+    """
+    A contributed video, kept as the master artifact.
+
+    Frames are extracted from it into `Image` rows; the video itself is retained
+    so extraction can be re-run with different settings later (internal design notes).
+    """
+
+    ID = models.UUIDField(primary_key=True, default=uuid.uuid4, verbose_name="Video ID")
+    contribution = models.ForeignKey(
+        "Contribution", on_delete=models.CASCADE, related_name="videos"
+    )
+    video = models.FileField(upload_to=set_video, blank=False, max_length=255)
+    created_at = models.DateTimeField("Created at", auto_now_add=True)
+    # The uploading client's stable key for this file, so a batch retried
+    # after a lost response stores nothing twice. Unique per contribution.
+    client_key = models.CharField(
+        max_length=64, blank=True, null=True, verbose_name="Client file key"
+    )
+
+    # From ffprobe: MP4/MOV carry QuickTime atoms, not EXIF (internal design notes).
+    duration_s = models.FloatField(blank=True, null=True, verbose_name="Duration (s)")
+    frame_rate = models.FloatField(blank=True, null=True, verbose_name="Frame rate")
+    codec = models.CharField(max_length=32, blank=True, verbose_name="Codec")
+    created_time = models.DateTimeField(
+        blank=True, null=True, verbose_name="Recorded at"
+    )
+    # HDR and stabilisation both break the fixed-intrinsics assumption
+    # (internal design notes), so record what was detected.
+    is_hdr = models.BooleanField(default=False, verbose_name="HDR / Dolby Vision")
+    stabilisation = models.CharField(
+        max_length=32, blank=True, verbose_name="Stabilisation detected"
+    )
+    frames_extracted = models.IntegerField(default=0, verbose_name="Frames extracted")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "Source videos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["contribution", "client_key"],
+                name="sourcevideo_unique_client_key",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.ID}"
 
 
 class Image(models.Model):
@@ -274,14 +778,121 @@ class Image(models.Model):
     image = models.ImageField(upload_to=set_image, blank=False, max_length=255)
     created_at = models.DateTimeField("Created at", auto_now_add=True)
 
-    # Multiple choices for label - Also incorporates general image quality.
-    label_options = [("nsfw", "NSFW"), ("good", "Good"), ("bad", "Bad")]
-    label = models.CharField(max_length=50, blank=True, choices=label_options)
+    ## Ordering
+    # Per-site monotonic counter assigned at ingest, ordered by capture time
+    # within each contribution. COLMAP's sequential_matcher matches consecutive
+    # image_ids, which are assigned in insertion order -- so sorted link names
+    # must equal capture order (internal design notes).
+    seq = models.IntegerField(blank=True, null=True, verbose_name="Sequence")
+
+    ## Provenance
+    # Video-derived frames must be distinguishable: 500 frames from one clip
+    # should not outrank 50 deliberate photographs on the leaderboard
+    # (internal design notes).
+    source_video = models.ForeignKey(
+        "SourceVideo",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="frames",
+        verbose_name="Source video",
+    )
+    frame_index = models.IntegerField(blank=True, null=True, verbose_name="Frame index")
+
+    ## EXIF, read server-side at upload
+    camera_make = models.CharField(max_length=200, blank=True)
+    camera_model = models.CharField(max_length=200, blank=True)
+    date_taken = models.DateTimeField(blank=True, null=True)
+    focal_length = models.CharField(max_length=100, blank=True)
+    # Contributor location data: stored only with explicit opt-in (internal design notes).
+    gps_latitude = models.FloatField(blank=True, null=True)
+    gps_longitude = models.FloatField(blank=True, null=True)
+    is_compressed = models.BooleanField(default=False)
+    original_filename = models.CharField(max_length=255, blank=True)
+    # The uploading client's stable key for this file (a hash of name, size
+    # and lastModified), so a batch retried after a lost response stores
+    # nothing twice. NULL for everything uploaded without one; unique per
+    # contribution, and indexed by that constraint.
+    client_key = models.CharField(
+        max_length=64, blank=True, null=True, verbose_name="Client file key"
+    )
+    original_file_size = models.BigIntegerField(blank=True, null=True)
+    uploaded_file_size = models.BigIntegerField(blank=True, null=True)
+
+    ## Safety -- a moderation verdict
+    safety_status_options = [
+        ("pending", "Not checked"),
+        ("safe", "Safe"),
+        ("flagged", "Flagged for review"),
+        ("rejected", "Rejected"),
+    ]
+    safety_status = models.CharField(
+        max_length=20, default="pending", choices=safety_status_options
+    )
+    safety_score = models.FloatField(blank=True, null=True)
+    safety_checked_at = models.DateTimeField(blank=True, null=True)
+    # When a *person* last set `safety_status` (review 2026-11-22 §1 #6).
+    #
+    # Recorded automatically by `signals.pre_save_image` whenever the status
+    # changes through anything other than `ImageOps` -- the admin actions, the
+    # change form, a shell. `ImageOps` never overwrites a status that has this
+    # set: re-running the checks (the admin trigger, an `acks_late`
+    # redelivery, a mixed image+video upload) used to turn a moderator's NSFW
+    # decision back into `safe` and move the file back into the served tree.
+    safety_moderated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Safety decided by a moderator at",
+    )
+
+    ## Segmentation mask (internal design notes)
+    # Marks which pixels belong to the subject. COLMAP can ignore masked-out
+    # regions during feature extraction, and FRGS consumes masks in its
+    # training loop by default -- so a mask supplied here can reach both stages.
+    #
+    # Supplied by a contributor, drawn by an admin, or generated by SAM3. The
+    # source is recorded because a generated mask and a human-drawn one deserve
+    # different trust.
+    mask = models.ImageField(
+        upload_to=set_mask, blank=True, max_length=255, verbose_name="Mask"
+    )
+    mask_source_options = [
+        ("contributor", "Contributor-supplied"),
+        ("admin", "Admin-drawn"),
+        ("sam3", "SAM3-generated"),
+    ]
+    mask_source = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=mask_source_options,
+        verbose_name="Mask source",
+    )
+
+    ## Quality -- measurements, not judgements
+    # Tenengrad, the same measure used to pick sharp video frames, so stills and
+    # frames are comparable (internal design notes).
+    sharpness_score = models.FloatField(blank=True, null=True)
+    exposure_score = models.FloatField(blank=True, null=True)
+
+    ## Human override, kept separate from anything measured
+    admin_verdict_options = [("accept", "Accept"), ("reject", "Reject")]
+    admin_verdict = models.CharField(
+        max_length=10, blank=True, choices=admin_verdict_options
+    )
     remark = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]
         verbose_name_plural = "Images"
+        permissions = [
+            ("moderate_image", "Can quarantine or release images and set verdicts")
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["contribution", "client_key"],
+                name="image_unique_client_key",
+            )
+        ]
 
     def __str__(self):
         return f"{self.ID}"
@@ -292,7 +903,8 @@ class Image(models.Model):
                     {self.ID},
                     {self.contribution},
                     {self.image.url},
-                    {self.label},
+                    {self.safety_status},
+                    {self.admin_verdict},
                     {self.remark}
                 )
                 """
@@ -353,8 +965,8 @@ class Run(models.Model):
     ID = ShortUUIDField(
         primary_key=True, length=16, max_length=16, verbose_name="Run ID"
     )
-    mesh = models.ForeignKey(
-        Mesh, on_delete=models.CASCADE, verbose_name="Mesh ID", related_name="runs"
+    site = models.ForeignKey(
+        Site, on_delete=models.CASCADE, verbose_name="Site ID", related_name="runs"
     )
     ark = models.OneToOneField(
         ARK,
@@ -443,6 +1055,36 @@ class Run(models.Model):
         default=0.0, null=True, verbose_name="Init Camera LookAt Z"
     )
 
+    ## Unified camera model (internal design notes)
+    # The fields above are viewer-shaped and duplicated: rotaX/Y/Z were written
+    # for Google <model-viewer> on the photogrammetry path, while camUp*,
+    # initCamPos*, initCamLookAt*, sphDegree and focalAdjustment are
+    # gsplat-shaped -- two viewers, two divergent parameter sets, neither
+    # meaningful to the other. One viewer now serves both formats (20.1), so
+    # the framing is one set of numbers.
+    #
+    # The legacy fields are kept rather than dropped: they are the only record
+    # of framing an operator tuned by hand across 82 runs, and 0021 derives
+    # these from them. Dropping them would make that derivation unrepeatable.
+    cam_position = models.JSONField(
+        default=list, blank=True, verbose_name="Camera position [x, y, z]"
+    )
+    cam_target = models.JSONField(
+        default=list, blank=True, verbose_name="Camera target [x, y, z]"
+    )
+    cam_up = models.JSONField(
+        default=list, blank=True, verbose_name="Camera up [x, y, z]"
+    )
+    # Degrees, applied to the model rather than the camera -- this is what
+    # rotaX/Y/Z meant, and reconstructions come out of COLMAP in an arbitrary
+    # orientation often enough that it stays adjustable.
+    model_rotation = models.JSONField(
+        default=list, blank=True, verbose_name="Model rotation [x, y, z] degrees"
+    )
+    cam_fov = models.FloatField(
+        default=60.0, verbose_name="Vertical field of view (degrees)"
+    )
+
     antialiased = models.BooleanField(default=True, verbose_name="Antialiased")
     sphDegree = models.IntegerField(
         default=2, verbose_name="Spherical Harmonics Degree (0/1/2)"
@@ -455,6 +1097,10 @@ class Run(models.Model):
     class Meta:
         ordering = ["-started_at"]
         verbose_name_plural = "Runs"
+        permissions = [
+            ("publish_run", "Can publish, hide or retire runs"),
+            ("trigger_run", "Can start reconstructions and re-cuts"),
+        ]
 
     def __str__(self):
         return f"{self.ID}"
@@ -463,17 +1109,441 @@ class Run(models.Model):
         return f"""
                 Run(
                     {self.ID},
-                    {self.mesh},
+                    {self.site},
                     {self.started_at},
                     {self.ended_at},
                     {self.directory},
                     {self.status},
-                    {self.ark.url}
+                    {self.ark.url if self.ark_id and self.ark else None}
                 )
                 """
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        # The directory is derived from `started_at`, which `auto_now_add` only
+        # fills during the first save -- so a second write is needed, but only
+        # then. It used to run on *every* save, doubling each status update the
+        # pipeline makes.
         if not self.directory:
-            self.directory = f"{self.mesh.ID}/{str(self.kind).lower()}cache/{self.started_at.astimezone(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%d-%H-%M-%S')}__{str(self.ID)}"
-        super().save(update_fields=["directory"])
+            self.directory = f"{self.site.ID}/{str(self.kind).lower()}cache/{self.started_at.astimezone(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%d-%H-%M-%S')}__{str(self.ID)}"
+            super().save(update_fields=["directory"])
+
+
+class RunStage(models.Model):
+    """
+    One step of the pipeline, as a row.
+
+    Today a pipeline failure is a line in a rotating log file and a sentence in
+    `Run.notes`: "which stage failed, and how long did the ones before it take"
+    can only be answered by reading logs, and "how badly does COLMAP scale with
+    image count" cannot be answered at all. This makes each step queryable
+    (internal design notes).
+
+    **Two scopes, one model.** Ingest steps -- NSFW, EXIF, frame extraction --
+    happen per *contribution*, in parallel; reconstruction steps happen per
+    *Run*, serialised globally (internal design notes). The columns are the
+    same for both, so the FK differs and a constraint enforces that exactly one
+    is set. Splitting this into two models would duplicate every field and every
+    piece of stage-handling code to express one differing column.
+
+    Nothing writes these rows yet; the wiring is unit 5.6.
+    """
+
+    class Scope(models.TextChoices):
+        INGEST = "ingest", "Ingest (per contribution)"
+        RECON = "recon", "Reconstruction (per run)"
+
+    class Status(models.TextChoices):
+        PENDING = "Pending", "Pending"
+        RUNNING = "Running", "Running"
+        COMPLETED = "Completed", "Completed"
+        FAILED = "Failed", "Failed"
+        SKIPPED = "Skipped", "Skipped"
+        CANCELLED = "Cancelled", "Cancelled"
+
+    ID = ShortUUIDField(
+        primary_key=True, length=16, max_length=16, verbose_name="Stage ID"
+    )
+
+    # Exactly one of these is set; see the constraints below.
+    run = models.ForeignKey(
+        Run,
+        on_delete=models.CASCADE,
+        related_name="stages",
+        blank=True,
+        null=True,
+        verbose_name="Run",
+    )
+    contribution = models.ForeignKey(
+        Contribution,
+        on_delete=models.CASCADE,
+        related_name="stages",
+        blank=True,
+        null=True,
+        verbose_name="Contribution",
+    )
+
+    # Free text, not choices: stage names change whenever the pipeline does
+    # (COLMAP matchers, FRGS, splat-transform), and a choices list would need a
+    # migration for each. The admin filters on `scope`, which is stable.
+    name = models.CharField(max_length=64, db_index=True, verbose_name="Stage")
+    ordinal = models.PositiveSmallIntegerField(
+        default=0, verbose_name="Execution order"
+    )
+    # Retries get a new row rather than overwriting the failed one -- the point
+    # of this table is that a failure stays on the record.
+    attempt = models.PositiveSmallIntegerField(default=1, verbose_name="Attempt")
+
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    started_at = models.DateTimeField(blank=True, null=True, verbose_name="Started")
+    ended_at = models.DateTimeField(blank=True, null=True, verbose_name="Ended")
+    # Stored rather than derived from the timestamps: a stage that reports its
+    # own duration (FRGS training time, say) is more accurate than the wall
+    # clock around the subprocess, and it keeps aggregate queries simple.
+    duration_s = models.FloatField(blank=True, null=True, verbose_name="Duration (s)")
+
+    # The exact invocation, so a failed stage can be re-run by hand.
+    command = models.TextField(blank=True, verbose_name="Command")
+    exit_code = models.IntegerField(blank=True, null=True, verbose_name="Exit code")
+    log_path = models.CharField(max_length=512, blank=True, verbose_name="Log file")
+
+    # Output paths this stage declares. Resume reads these -- see
+    # `resumable_complete()`.
+    artifacts = models.JSONField(default=list, blank=True, verbose_name="Artifacts")
+    # Stage-specific numbers: registered/total images, mean reprojection error,
+    # PSNR/SSIM/LPIPS, Gaussian count, peak VRAM (internal design notes). Free-form
+    # because each stage measures different things; promote to columns if one
+    # turns out to be queried constantly.
+    metrics = models.JSONField(default=dict, blank=True, verbose_name="Metrics")
+
+    notes = models.TextField(blank=True, verbose_name="Notes")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["ordinal", "created_at"]
+        verbose_name = "Run stage"
+        verbose_name_plural = "Run stages"
+        constraints = [
+            # A stage belongs to a reconstruction or to an ingest, never both and
+            # never neither -- an unattached stage row is not a partial record,
+            # it is an unanswerable one.
+            models.CheckConstraint(
+                condition=models.Q(run__isnull=False, contribution__isnull=True)
+                | models.Q(run__isnull=True, contribution__isnull=False),
+                name="runstage_exactly_one_owner",
+            ),
+            models.UniqueConstraint(
+                fields=["run", "name", "attempt"],
+                condition=models.Q(run__isnull=False),
+                name="runstage_unique_per_run_attempt",
+            ),
+            models.UniqueConstraint(
+                fields=["contribution", "name", "attempt"],
+                condition=models.Q(contribution__isnull=False),
+                name="runstage_unique_per_contribution_attempt",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["name", "status"]),
+        ]
+
+    @property
+    def scope(self) -> str:
+        return self.Scope.RECON if self.run_id else self.Scope.INGEST
+
+    @property
+    def owner(self):
+        """The Run or Contribution this stage belongs to."""
+        return self.run or self.contribution
+
+    def resumable_complete(self) -> bool:
+        """
+        Whether resume may skip this stage.
+
+        `Completed` alone is not enough: a run can be interrupted after the row
+        is written, and archived or hand-cleaned directories lose files that the
+        database still claims exist. Trusting the row alone would resume a
+        pipeline on top of missing inputs, which fails later and more
+        confusingly than re-running the stage (internal design notes).
+        """
+        if self.status != self.Status.COMPLETED:
+            return False
+        return all(os.path.exists(str(p)) for p in (self.artifacts or []))
+
+    def start(self, command: str = "", log_path: str = ""):
+        """Mark the stage running. Timestamps come from the DB clock's timezone."""
+        self.status = self.Status.RUNNING
+        self.started_at = timezone.now()
+        if command:
+            self.command = command
+        if log_path:
+            self.log_path = log_path
+        self.save(
+            update_fields=["status", "started_at", "command", "log_path", "updated_at"]
+        )
+        return self
+
+    def finish(self, status, *, exit_code=None, metrics=None, artifacts=None, notes=""):
+        """
+        Close the stage out.
+
+        `duration_s` is filled from the timestamps only when the stage did not
+        report its own, so an explicitly measured duration is never overwritten.
+        """
+        self.status = status
+        self.ended_at = timezone.now()
+        if self.duration_s is None and self.started_at:
+            self.duration_s = (self.ended_at - self.started_at).total_seconds()
+        if exit_code is not None:
+            self.exit_code = exit_code
+        if metrics:
+            self.metrics = {**(self.metrics or {}), **metrics}
+        if artifacts is not None:
+            self.artifacts = artifacts
+        if notes:
+            self.notes = notes
+        self.save()
+        return self
+
+    def __str__(self):
+        return f"{self.name} [{self.status}] ({self.owner})"
+
+    def __repr__(self):
+        return f"RunStage({self.ID}, {self.scope}, {self.name}, {self.status})"
+
+
+class SiteSubmissionRequest(models.Model):
+    """
+    A public request to add a heritage site (internal design notes).
+
+    Replaces the Google Form, and must not lose what that form already
+    collects: affiliation, district, a source link, whether access is
+    restricted, which authority has purview, and **two separate consents**.
+    Those were live fields answered by real requesters, so dropping any of them
+    would be a regression dressed up as a migration.
+
+    The pin is the point: a dropped coordinate beats a typed place name, which
+    is why 6.9's discovery layer feeds this directly -- tap an unreconstructed
+    site on the map and request it.
+    """
+
+    ID = ShortUUIDField(
+        primary_key=True, length=16, max_length=16, verbose_name="Request ID"
+    )
+
+    ## What is being requested
+    name = models.CharField(max_length=200, verbose_name="Site name")
+    description = models.TextField(blank=True, verbose_name="Description")
+    country = models.CharField(max_length=100, default="India")
+    state = models.CharField(max_length=100, blank=True)
+    # The Google Form collects this and the old model did not. It feeds the
+    # display slug (§2.2), so losing it would leave every requested site with
+    # an incomplete verbose_id.
+    district = models.CharField(max_length=100, blank=True)
+
+    # Dropped on the map. With PostGIS (6.0), ST_Contains against admin
+    # boundaries auto-fills state and district from this -- no reverse-geocode
+    # round trip (§3).
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+
+    ## Who is asking
+    requester = models.ForeignKey(
+        "Contributor",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="site_requests",
+        verbose_name="Requested by",
+    )
+    # Anonymous submission is allowed on purpose (`api.request_site`), which
+    # left a reviewer with no way to answer a request -- to ask which of two
+    # temples of the same name was meant, or to say it has been created. The
+    # form always asked for both; there was simply nowhere to put them. Blank,
+    # not required: someone who prefers not to leave a contact still gets to
+    # file the request.
+    requester_name = models.CharField(
+        max_length=200, blank=True, verbose_name="Requester's name"
+    )
+    requester_email = models.EmailField(
+        max_length=254, blank=True, verbose_name="Requester's email"
+    )
+    # Credibility signal during review, not a filter.
+    affiliation = models.CharField(
+        max_length=200, blank=True, verbose_name="School / university / organisation"
+    )
+
+    ## Provenance and legality
+    # A Wikipedia or Wikidata link here is a direct seed for wikidata_qid (§2.5).
+    source_url = models.URLField(blank=True, verbose_name="Link to a known source")
+
+    purview_options = [
+        ("asi", "Archaeological Survey of India"),
+        ("state", "State Archaeology"),
+        ("other", "Other"),
+        ("unknown", "Unknown"),
+    ]
+    purview = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=purview_options,
+        default="unknown",
+        verbose_name="Purview",
+    )
+    # Legal and contributor-safety gate. Never silently defaulted: sending
+    # someone to photograph a restricted site is a real risk, so "not answered"
+    # and "no" must stay distinguishable.
+    restricted_access = models.BooleanField(
+        blank=True,
+        null=True,
+        verbose_name="Prohibited / limited-access area?",
+    )
+
+    ## Consents -- two, separately, as the form has them
+    accepted_terms = models.BooleanField(default=False, verbose_name="Accepted Terms")
+    accepted_privacy = models.BooleanField(
+        default=False, verbose_name="Accepted Privacy Policy"
+    )
+
+    ## Review
+    status_options = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+    status = models.CharField(
+        max_length=20, choices=status_options, default="pending", db_index=True
+    )
+    review_notes = models.TextField(blank=True, verbose_name="Review notes")
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    # Set when an approved request becomes a real site, so the provenance of a
+    # site is answerable later.
+    created_site = models.ForeignKey(
+        "Site",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="submission_requests",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Site request"
+        verbose_name_plural = "Site requests"
+        constraints = [
+            # Both consents are required to submit. Enforced in the database
+            # because a consent recorded as False is not consent, and a request
+            # without it should not exist to be approved by mistake.
+            models.CheckConstraint(
+                condition=models.Q(accepted_terms=True, accepted_privacy=True),
+                name="siterequest_requires_both_consents",
+            ),
+        ]
+
+    @property
+    def has_pin(self) -> bool:
+        return self.latitude is not None and self.longitude is not None
+
+    def __str__(self):
+        return f"{self.name} [{self.status}]"
+
+
+class Badge(models.Model):
+    """
+    An award a contributor can earn (internal design notes).
+
+    Criteria live in code (`leaderboard.BADGE_RULES`) rather than in a field:
+    they are predicates over aggregates, and a database column holding a rule
+    expression is a small language nobody wants to maintain. The row exists so
+    the *award* is data -- name, description and icon can change without
+    revoking anything.
+    """
+
+    slug = models.SlugField(primary_key=True, max_length=50)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    icon = models.CharField(max_length=100, blank=True, verbose_name="Icon")
+    contributors = models.ManyToManyField(
+        "Contributor",
+        through="ContributorBadge",
+        related_name="badges",
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["slug"]
+
+    def __str__(self):
+        return self.name
+
+
+class ContributorBadge(models.Model):
+    """When a contributor earned a badge. Awards are never revoked by a rerun."""
+
+    contributor = models.ForeignKey(
+        "Contributor", on_delete=models.CASCADE, related_name="badge_awards"
+    )
+    badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name="awards")
+    awarded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["contributor", "badge"], name="one_award_per_badge"
+            )
+        ]
+        ordering = ["-awarded_at"]
+
+    def __str__(self):
+        return f"{self.contributor} -- {self.badge}"
+
+
+class LeaderboardEntry(models.Model):
+    """
+    A materialised leaderboard row (internal design notes).
+
+    Stored rather than computed on request: the ranking is an aggregate across
+    `Image` joins, and running it per page view would be both slow and
+    pointless -- it changes only when a reconstruction completes.
+
+    `period` is `"all"` or `"YYYY-MM"`. Monthly boards exist so a new
+    contributor has something winnable; an all-time board alone is a wall.
+    """
+
+    PERIOD_ALL = "all"
+
+    contributor = models.ForeignKey(
+        "Contributor", on_delete=models.CASCADE, related_name="leaderboard_entries"
+    )
+    period = models.CharField(max_length=7, db_index=True, default=PERIOD_ALL)
+
+    # The headline metric: sites a contributor helped unlock, not images
+    # uploaded. Counting uploads rewards volume, and volume is easy to fake.
+    sites_unlocked = models.IntegerField(default=0)
+    # Weighted, not raw -- see leaderboard.contribution_score.
+    score = models.FloatField(default=0.0)
+    images_accepted = models.IntegerField(default=0)
+    frames_accepted = models.IntegerField(default=0)
+    rank = models.IntegerField(default=0, db_index=True)
+    computed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["period", "rank"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["contributor", "period"], name="one_entry_per_period"
+            )
+        ]
+        verbose_name_plural = "Leaderboard entries"
+
+    def __str__(self):
+        return f"{self.period} #{self.rank} {self.contributor}"

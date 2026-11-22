@@ -1,0 +1,539 @@
+/*
+  The panel floats over the map rather than sitting in a row beside it, so this
+  is the positioning context it is inset from.
+*/
+.home-container {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  /*
+    `dvh` tracks the visible viewport, so the bottom controls are not hidden
+    under a phone's browser toolbar. `vh` first, for browsers without `dvh`.
+  */
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+ 
+:root {
+  --mobile-btn-size: 44px;
+  --mobile-icon-size: 22px;
+  --mobile-control-gap: 10px;
+  --mobile-edge-padding: 12px;
+  --mobile-top-row-top: 12px;
+}
+ 
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+ 
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+}
+ 
+/* Vertical scrollbar styling */
+.content-area::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+ 
+.content-area::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+}
+ 
+.content-area::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+ 
+.content-area::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+ 
+.content-area::-webkit-scrollbar-corner {
+  background: var(--bg-secondary);
+}
+ 
+.hero-section {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background-color: var(--bg-primary);
+  border-radius: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+ 
+.home-container .hero-section {
+  height: 100%;
+  margin-bottom: 0;
+  width: 100%;
+  flex: 1;
+}
+ 
+.home-container .content-area {
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+ 
+.map-status-overlay {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1002;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 10px var(--shadow-sm);
+}
+ 
+/*
+  Map-space chrome, on `--map-chrome-*`.
+
+  This said these "float over the basemap, which is the same in both themes, so
+  they keep a light ground on purpose: a dark chip on a light map reads as a
+  hole punched in it". True when written; false since the basemap started
+  following the theme. A light chip on a dark map is the same hole, punched the
+  other way. The tokens move with the basemap so the reasoning holds either way.
+*/
+.map-status-overlay--loading {
+  background: var(--map-chrome-bg);
+  color: var(--map-chrome-text);
+}
+ 
+.map-status-overlay--error {
+  background: rgba(176, 0, 32, 0.9);
+  color: #ffffff;
+}
+
+ 
+/* The only float over the map with no shadow and a 4px radius. It is a floating
+   control like the others, so it is shaped like one. */
+/* `.btn` is declared after this and sets its own radius, so a bare
+   `.request-bottom-right` loses on source order. Two classes, one specificity
+   point, and the float keeps the shape of the other floats. */
+.btn.request-bottom-right {
+  position: fixed;
+  /*
+    Clear of the attribution bar, measured from its own token.
+
+    This was `44px` here and `64px !important` in three media queries -- the
+    footer's height written out as a literal in four places, each of which had
+    to be found and changed together. It is one token now, plus the gap.
+  */
+  bottom: calc(var(--map-footer-height, 28px) + 16px);
+  right: 24px;
+  z-index: 1005;
+  min-height: var(--control-size);
+  border-radius: var(--control-radius);
+  box-shadow: var(--control-shadow);
+}
+
+ 
+.btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+ 
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+ 
+.btn-primary:hover {
+  background-color: var(--btn-primary-hover);
+  transform: translateY(-2px);
+}
+
+ 
+.btn-tertiary {
+  background-color: var(--btn-tertiary-bg);
+  color: var(--btn-tertiary-text);
+}
+ 
+.btn-tertiary:hover {
+  background-color: var(--btn-tertiary-hover);
+  transform: translateY(-2px);
+}
+
+ 
+/* 3-column viewer */
+/*
+  The model, over the map (internal design notes).
+
+  This was a resizable column between the panel and the map, 420px by default:
+  the thing the project exists to produce, shown in the narrowest region of the
+  screen, with the map it displaced squeezed rather than freed.
+
+  The scrim dims the map instead of removing it, so the pin you came from is
+  still visible behind the model you came for.
+*/
+.viewer-overlay {
+  position: fixed;
+  inset: 0;
+  /*
+    The same 2000 the other dialog overlays use, so this sits above the sidebar
+    (1250) and its controls (1300, 1310) and below the image lightbox (3000) and
+    the snackbars (5000). At 1200 the sidebar rendered *over* the scrim: it was
+    not dimmed, it covered the panel's own title, and `aria-modal="true"` was a
+    claim the stacking contradicted -- the rest of the page was neither inert
+    nor hidden.
+  */
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 45%);
+}
+
+.viewer-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1120px, 100%);
+  height: min(820px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-primary);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+}
+ 
+.viewer-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  flex-shrink: 0;
+  gap: 8px;
+}
+ 
+.viewer-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+ 
+.viewer-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+ 
+.viewer-close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+ 
+.viewer-model-wrapper {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/*
+  Inside the dialog the viewer takes the room it is given, and no more.
+
+  `.model-viewer-container` declares `min-height: 400px` so it is never a sliver
+  in a container that has not been sized. In this dialog it *is* sized -- the
+  wrapper is `flex: 1` -- and on a phone in landscape the wrapper is about
+  300px tall, so the 400px floor overflowed it: roughly a quarter of the model
+  was sheared off and the Contribute button under it was clipped away entirely.
+*/
+.viewer-model-wrapper .model-viewer-container {
+  min-height: 0;
+  height: 100%;
+}
+ 
+.viewer-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+ 
+
+ 
+/* Responsive design */
+/*
+  The 1024px block that used to live here described the panel as a flex child:
+  `flex-direction: column` on the container, and `.sidebar { width: 100%;
+  height: auto; border-right: none }`. The panel is `position: absolute` now
+  (Sidebar.css), so it is out of flow entirely and none of that means what it
+  says.
+
+  It was not merely dead. Home.css loads after Sidebar.css and `.sidebar` beat
+  it at equal specificity, so between 769px and 1024px the open panel got
+  `height: auto`: its list scrolls via `flex: 1; overflow-y: auto`, which needs
+  a bounded parent, so the panel grew to all its rows, `.home-container`'s
+  `overflow: hidden` clipped it, and the bottom of the list and the footer
+  became unreachable at iPad width. Width escaped only by accident, because
+  `.sidebar.visible` has higher specificity; height had no such rescue.
+
+  The mobile pass checked 820x1180 and found the panel correctly hidden -- it
+  never opened it.
+*/
+ 
+@media (max-width: 768px) {
+  :root {
+    --mobile-edge-padding: 12px;
+    --mobile-top-row-top: 12px;
+  }
+ 
+  .home-container {
+    flex-direction: row;
+  }
+ 
+  .main-content {
+    width: 100%;
+  }
+ 
+  .content-area {
+    padding: 12px;
+  }
+ 
+  .hero-section {
+    height: 60vh;
+    min-height: 420px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+  }
+
+ 
+  .btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+ 
+  .request-bottom-right{
+    right: 12px;
+    bottom: 44px;
+  }
+ 
+  .request-bottom-right {
+    position: absolute;
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 10px;
+    border-radius: 10px;
+    right: 12px;
+    bottom: 44px;
+  }
+
+  @media (max-width: 600px) {
+    .request-bottom-right {
+      bottom: calc(var(--map-footer-height, 64px) + 16px) !important;
+    }
+  }
+
+ 
+  .viewer-overlay {
+    padding: 0;
+  }
+
+  .viewer-panel {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+}
+ 
+@media (max-width: 480px) {
+  :root {
+    --mobile-edge-padding: 10px;
+    --mobile-top-row-top: 10px;
+  }
+ 
+  .content-area {
+    padding: 10px;
+  }
+ 
+  .hero-section {
+    height: 58vh;
+    min-height: 360px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+ 
+  .request-bottom-right {
+    right: 10px;
+    bottom: calc(var(--map-footer-height, 64px) + 16px);
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  /*
+    At phone width the picker takes its own row under the title. 45% of a
+    360px header is 151px -- enough for a date, not for the fallback notice,
+    which is a full sentence and would wrap to five lines beside a two-word
+    title. `order` puts it after the buttons in flex order so the title and
+    the close button keep the first row to themselves.
+  */
+  .viewer-panel-header {
+    flex-wrap: wrap;
+  }
+
+  .viewer-run-picker {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+.viewer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/*
+  The header's slot for the version picker, between the title and the buttons.
+
+  `flex: 0 1 auto` with `min-width: 0`: it may shrink, and it may shrink below
+  its content, because a `<select>` whose widest option is an Odia month name
+  plus "(latest)" is wider than a phone header can spare and a flex item that
+  refuses to shrink pushes the close button off the dialog. Capped at 45% so
+  the title keeps enough room for its ellipsis to mean something: on a 360px
+  screen the header has 336px inside its padding, the buttons take 68px, and
+  what is left is shared 55/45 between a site's name and its version.
+
+  Hidden when empty. `RunPicker` renders nothing for a single-run site, and an
+  empty flex item still costs the header a `gap` on each side of it.
+*/
+.viewer-run-picker {
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 45%;
+}
+
+.viewer-run-picker:empty {
+  display: none;
+}
+
+.viewer-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.viewer-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/*
+  Fullscreen now means "take the whole viewport" rather than "escape the
+  column", so it is the panel that grows and the scrim's padding that goes.
+*/
+.viewer-overlay:has(.viewer-fullscreen) {
+  padding: 0;
+}
+
+.viewer-panel.viewer-fullscreen {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Replaces the two-tab strip, whose second tab only ever said "coming soon". */
+.viewer-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  /* The name is the one thing that must not push the close button off the
+     header on a narrow screen. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/*
+  The error boundary's own panel.
+
+  `.error-boundary` was rendered by `ErrorBoundary` and styled nowhere in the
+  tree, so a failed chunk put an unstyled alert straight into `.home-container`
+  -- a `display: flex; height: 100vh` row -- where it stretched as a flex child
+  beside the map instead of reading as a message.
+*/
+.error-boundary {
+  margin: auto;
+  padding: 16px 20px;
+  max-width: 32ch;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.contribute-load-failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  background: var(--bg-primary);
+}

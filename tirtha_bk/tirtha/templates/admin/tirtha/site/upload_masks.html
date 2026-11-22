@@ -1,0 +1,76 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Bulk mask upload for one site (internal design notes).
+
+The pairing is by filename and nothing else, so this page's job is to tell the
+operator what a name has to look like before they choose the files -- a mask
+that matches nothing is reported and dropped, and "no image at this site has
+that name" is only actionable if the rules were in front of them. The rules are
+`views.attach_masks`' own; if they change there, change them here.
+{% endcomment %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:tirtha_site_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{{ change_url }}">{{ original.name }}</a>
+  &rsaquo; Upload masks
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+  .um-note { margin: 1em 0; padding: .75em 1em; background: var(--darkened-bg, #f6f6f6); border-left: 3px solid #79aec8; }
+  .um-rules { margin: 1em 0 1.5em; }
+  .um-rules dt { font-family: monospace; margin-top: .6em; }
+  .um-rules dd { margin: .15em 0 0 1.5em; color: var(--body-quiet-color, #666); }
+  .um-count { color: var(--body-quiet-color, #666); }
+  .um-file { margin: 1em 0; }
+  .um-file input[type=file] { display: block; margin-top: .4em; }
+</style>
+
+<h1>Upload masks for {{ original.name }}</h1>
+
+<p class="um-count">
+  {{ masked_count }} of {{ image_count }} image{{ image_count|pluralize }} at this site
+  currently {{ masked_count|pluralize:"has,have" }} a mask.
+</p>
+
+<p class="um-note">
+  A mask is a stencil in one image's pixel coordinates: <strong>white (or opaque)
+  where the monument is</strong>, black (or transparent) everywhere else. It must be a
+  PNG with exactly the same width and height as the image it belongs to. A mask
+  drawn on a resized copy is refused, because the projection has no way to tell
+  and would read the monument as background.
+</p>
+
+<h2>How a mask finds its image</h2>
+<p>Each file is paired with an image by its <em>name</em>. Any one of these works:</p>
+<dl class="um-rules">
+  <dt>IMG_0117.png</dt>
+  <dd>masks the image uploaded as <code>IMG_0117.jpeg</code> (stem against stem).</dd>
+  <dt>IMG_0117.jpeg.png</dt>
+  <dd>masks it too. This is COLMAP's own convention, and the one the pipeline writes.</dd>
+  <dt>&lt;image ID&gt;.png</dt>
+  <dd>
+    masks exactly that image, by the UUID shown on its admin page. Use this when
+    two contributors uploaded photographs with the same filename: a name that
+    matches more than one image is <strong>refused, never guessed</strong>, because the
+    alternative is silently attaching a mask to a stranger's photograph.
+  </dd>
+</dl>
+<p>
+  Every image at this site is a candidate, whoever contributed it. One bad file
+  does not discard the rest: each rejection is reported by name after the upload.
+</p>
+
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+  <label class="um-file">
+    <strong>Mask files</strong> (PNG, several at once)
+    <input type="file" name="masks" accept="image/png,.png" multiple required>
+  </label>
+  <input type="submit" class="default" value="Attach masks">
+  <a href="{{ change_url }}" class="button cancel-link">Cancel</a>
+</form>
+{% endblock %}

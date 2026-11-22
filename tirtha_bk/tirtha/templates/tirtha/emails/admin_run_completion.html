@@ -32,7 +32,7 @@
             
             <div class="run-info">
                 <h3>Run Details:</h3>
-                <p><strong>Heritage Site:</strong> {{ mesh_name }} ({{ mesh_id }})</p>
+                <p><strong>Heritage Site:</strong> {{ site_name }} ({{ site_id }})</p>
                 <p><strong>Contributor:</strong> {{ contributor_name }} ({{ contributor_email }})</p>
                 <p><strong>Processing Type:</strong> {% if operation_type == "aV" %}Photogrammetry{% elif operation_type == "GS" %}Gaussian Splatting{% else %}{{ operation_type }}{% endif %}</p>
                 <p><strong>Contribution ID:</strong> {{ contribution_id }}</p>
@@ -61,7 +61,7 @@
             <h4>Admin Actions:</h4>
             <div style="text-align: center; margin: 20px 0;">
                 <a href="{{ contribution_admin_url }}" class="action-button">View Contribution</a>
-                <a href="{{ mesh_admin_url }}" class="action-button">View Heritage Site</a>
+                <a href="{{ site_admin_url }}" class="action-button">View Heritage Site</a>
                 <a href="{{ base_admin_url }}" class="action-button success-button">Admin Panel</a>
             </div>
             

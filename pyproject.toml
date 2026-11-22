@@ -1,0 +1,144 @@
+[project]
+name = "tirtha"
+version = "0.1.0"
+description = "Crowdsourced image collection and 3D reconstruction of cultural heritage sites"
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
+# Production runs 3.11.14. Upper bound because NumPy 1.x (required by the
+# torch 2.1.2 ABI) has no 3.13 wheels.
+requires-python = ">=3.11,<3.13"
+
+# NOTE: This reproduces the *current* production environment (Python 3.11.14,
+# Django 5.2.10, torch 2.1.2+cu118, NumPy 1.x). Constraints below exist so that
+# `uv lock` cannot silently float to a stack that has never been tested here.
+# Phase 5 replaces the GPU stack wholesale -- Python 3.14 / torch 2.11 / CUDA 13.0 /
+# fvdb-core (internal design notes). Framework upgrades (Django 6.x, NumPy 2.x) are
+# deliberate units once CI exists (Phase 1.4), not lock side-effects.
+dependencies = [
+    # The Django-free reconstruction layer, kept in its own repository so the
+    # boundary is enforceable (internal design notes). Path source during development;
+    # pin to a tag or commit before cutover.
+    "tirtha-recon",
+    # Django + Celery + Gunicorn + message queue
+    "amqp",
+    "authlib",
+    "celery",
+    "django>=5.2,<6.0",           # prod runs 5.2.x; the 6.x jump is a deliberate unit, not a lock side-effect
+    "django-cleanup",
+    "django-dbbackup==4.3.0",
+    "django-extensions",
+    "django-modeltranslation",   # per-language columns for translatable content (internal design notes)
+    "gunicorn>=23",
+    "kombu",
+    "psutil",
+    "psycopg2",
+    "psycopg2-binary",
+    "pytz",
+    "pytzdata",
+    "requests",
+    "rich",
+    "shortuuid",
+    # Data processing
+    # NumPy must stay on 1.x: torch 2.1.2 is compiled against
+    # the 1.x ABI, and NumPy 2 breaks them at import.
+    "numpy<2",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    # Computer vision & image processing
+    "opencv-python>=4.11,<5",
+    "pillow",
+    "pillow-heif",
+    # Content safety on CPU (internal design notes). MIT; pulls onnxruntime,
+    # numpy and opencv only -- no torch, no TensorFlow. It replaces
+    # GantMan's nsfw_model, which was the sole reason TensorFlow and Keras
+    # were dependencies at all.
+    "nudenet",
+    # 3D graphics & geometry
+    "open3d",
+    "plyfile",
+    "bleach>=6.4.0",
+    "django-colorfield>=0.14.0",
+    "google-auth>=2.57.1",
+]
+
+# torch, torchvision and timm were removed from the install (review 2026-11-22):
+# only the experimental VGGT path (`tirtha/run_vggt.py`, VGGT_ENABLE, off in
+# production) imports torch, and torch 2.1.2 carries many advisories. FastGS,
+# FRGS and nerfstudio run in their own environments. To revive VGGT, install a
+# current torch into a separate environment -- see run_vggt.py.
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    # `pytest`, so the tirtha-recon suite can be run from this environment.
+    #
+    # `tirtha-recon` is an editable install here and declares numpy, psutil,
+    # scipy and plyfile as runtime dependencies, so this virtualenv already had
+    # everything its 178 tests need except the runner -- and its own `.venv` has
+    # none of the science stack. The result was that neither project could run
+    # them, which is how `parse_model_analyzer` came to be tested against a
+    # fixture that was not what COLMAP prints.
+    #
+    #     .venv/bin/python -m pytest tests/   (from ../tirtha-recon)
+    "pytest",
+    "ruff",
+]
+
+# Tirtha is deployed on Linux x86_64 only (DEPLOY.md). Restricting the resolution
+# universe keeps the lock small and avoids resolving for platforms the pinned
+# CUDA torch build does not ship wheels for.
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+# torch/torchvision come from the CUDA 11.8 index, everything else from PyPI.
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[tool.uv.sources]
+tirtha-recon = { path = "../tirtha-recon", editable = true }
+torch = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+
+[tool.ruff]
+# 88 is what the codebase was already formatted to (black's default), so
+# ruff-format preserves it rather than rewriting every file. The old flake8
+# max-line-length of 120 is irrelevant now: E501 is off and ruff-format owns
+# line length.
+line-length = 88
+target-version = "py311"
+exclude = ["tirtha_bk/tirtha/migrations", "tirtha_bk/bin21", "tirtha_bk/bin23", "tirtha_bk/nn_models"]
+
+[tool.ruff.lint]
+# E/F = pycodestyle + pyflakes (real errors), B = bugbear (the only family the old
+# flake8 config selected), I = import sorting (replaces isort).
+# Deliberately not enabling UP/SIM/etc. yet -- see internal design notes.
+select = ["E", "F", "B", "I"]
+
+# Rules switched off deliberately. None of these flag defects; they were reviewed
+# once (Phase 1.2) and dismissed, so silencing them here keeps `ruff check` a
+# signal that something is actually wrong rather than a wall of known noise.
+ignore = [
+    # ruff-format owns line length. E501 then only fires on what a formatter
+    # cannot split -- long string literals, URLs, log messages.
+    "E501",
+    # `raise X from err` inside except. A readability nicety, not a defect;
+    # the tracebacks here are already logged with full context.
+    "B904",
+    # zip() without strict=. Every call site zips sequences of known-equal
+    # length. Revisit if any becomes dynamic.
+    "B905",
+    # Mutable argument defaults. The old flake8 config ignored B006 explicitly;
+    # the two call sites pass dicts that are never mutated.
+    "B006",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Standalone scripts that set sys.path before importing -- E402 is the point.
+"tirtha_bk/tirtha/run_vggt.py" = ["E402"]
+"tirtha_bk/id2vid.py" = ["E402"]
+# The settings shim star-imports a local_settings* module by design.
+"tirtha_bk/tirtha_bk/settings.py" = ["F403", "F405", "E402"]
+"tirtha_bk/tirtha_bk/local_settings*.py" = ["F403", "F405", "E402"]

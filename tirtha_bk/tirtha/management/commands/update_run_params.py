@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import List, Tuple
 
 from django.core.management.base import BaseCommand, CommandError
 

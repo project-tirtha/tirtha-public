@@ -11,25 +11,24 @@ short summary to stdout.
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
-import datetime
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
-
-from django.db.models import Count, Avg, F, DurationField, ExpressionWrapper
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 # Local imports
-from tirtha.models import Mesh, Contributor, Contribution, Image, Run, ARK
+from tirtha.models import ARK, Contribution, Contributor, Image, Run, Site
 
 
 def get_basic_counts():
     return {
-        "meshes": Mesh.objects.count(),
+        "sites": Site.objects.count(),
         "contributors": Contributor.objects.count(),
         "contributions": Contribution.objects.count(),
         "images": Image.objects.count(),
@@ -39,11 +38,11 @@ def get_basic_counts():
 
 
 def get_mesh_summary():
-    total = Mesh.objects.count()
-    completed = Mesh.objects.filter(completed=True).count()
-    hidden = Mesh.objects.filter(hidden=True).count()
+    total = Site.objects.count()
+    completed = Site.objects.filter(completed=True).count()
+    hidden = Site.objects.filter(hidden=True).count()
     by_country = list(
-        Mesh.objects.values("country").annotate(count=Count("pk")).order_by("-count")
+        Site.objects.values("country").annotate(count=Count("pk")).order_by("-count")
     )
 
     return {
@@ -85,12 +84,14 @@ def get_runs_stats():
 
 def get_image_stats():
     images_per_mesh = list(
-        Mesh.objects.annotate(image_count=Count("contributions__images"))
+        Site.objects.annotate(image_count=Count("contributions__images"))
         .values("ID", "name", "image_count")
         .order_by("-image_count")
     )
     img_label_dist = list(
-        Image.objects.values("label").annotate(count=Count("pk")).order_by("-count")
+        Image.objects.values("safety_status")
+        .annotate(count=Count("pk"))
+        .order_by("-count")
     )
 
     return {
@@ -124,12 +125,12 @@ def export_all_stats():
     stats["images"] = get_image_stats()
     stats["contributors"] = get_contributor_stats()
 
-    # Time series: meshes and contributions by month (last 36 months)
+    # Time series: sites and contributions by month (last 36 months)
     now = timezone.now()
     cutoff = now - timezone.timedelta(days=365 * 3)
 
     meshes_by_month = (
-        Mesh.objects.filter(created_at__gte=cutoff)
+        Site.objects.filter(created_at__gte=cutoff)
         .annotate(month=TruncMonth("created_at"))
         .values("month")
         .annotate(count=Count("pk"))
@@ -182,7 +183,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Statistics written to: {outpath}"))
 
         # Print a short human summary
-        basic = stats.get("meshes"), stats.get("contributors"), stats.get("images")
+        basic = stats.get("sites"), stats.get("contributors"), stats.get("images")
         self.stdout.write(
-            f"Meshes: {basic[0]} | Contributors: {basic[1]} | Images: {basic[2]}"
+            f"Sites: {basic[0]} | Contributors: {basic[1]} | Images: {basic[2]}"
         )

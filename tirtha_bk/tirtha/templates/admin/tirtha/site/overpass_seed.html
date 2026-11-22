@@ -1,0 +1,86 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Confirmation page for the "Find on OpenStreetMap" action (internal design notes).
+
+Seeding is a human decision, so this page's job is to give the operator enough
+to make it: the tags that tell two same-named temples apart, the OSM link to
+look at the actual geometry, and a Skip that is always available. Nothing is
+preselected -- a preselected radio is an invitation to click through 60 sites
+without reading, which is how a confidently wrong coordinate gets stored.
+{% endcomment %}
+
+{% block content %}
+<style>
+  .ov-site { margin: 0 0 1.5em; padding: 1em; border: 1px solid var(--hairline-color, #ddd); border-radius: 4px; }
+  .ov-site h2 { margin: 0 0 .25em; font-size: 1.05em; }
+  .ov-meta { color: var(--body-quiet-color, #666); font-size: .85em; margin-bottom: .75em; }
+  .ov-cand { display: block; padding: .35em 0; border-bottom: 1px dotted var(--hairline-color, #eee); }
+  .ov-cand:last-child { border-bottom: none; }
+  .ov-score { color: var(--body-quiet-color, #666); font-size: .8em; }
+  .ov-tags { color: var(--body-quiet-color, #666); font-size: .85em; }
+  .ov-none { color: #b00; }
+  .ov-note { margin: 1em 0; padding: .75em 1em; background: var(--darkened-bg, #f6f6f6); border-left: 3px solid #79aec8; }
+</style>
+
+<h1>Seed coordinates from OpenStreetMap</h1>
+
+<p class="ov-note">
+  Coordinates confirmed here are stored as <code>location_source = "osm"</code>.
+  OpenStreetMap data is <strong>ODbL</strong>: share-alike attaches to any dataset
+  we publish that contains them (internal design notes). The stored coordinate is
+  authoritative afterwards — the mirror is never consulted at render time, so a
+  later upstream edit cannot move a marker on its own.
+</p>
+
+<form method="post">{% csrf_token %}
+  {% for site, candidates in results %}
+    <div class="ov-site">
+      <h2>{{ site.name }}</h2>
+      <div class="ov-meta">
+        {{ site.district }}, {{ site.state }}, {{ site.country }}
+        {% if site.latitude %}
+          — currently {{ site.latitude|floatformat:5 }}, {{ site.longitude|floatformat:5 }}
+          ({{ site.get_location_source_display|default:"unknown source" }})
+        {% else %}
+          — no coordinate yet
+        {% endif %}
+      </div>
+
+      <input type="hidden" name="{{ action_checkbox_name }}" value="{{ site.pk }}">
+
+      {% if candidates %}
+        {% for c in candidates|slice:":8" %}
+          <label class="ov-cand">
+            <input type="radio" name="choice-{{ site.pk }}"
+                   value="{{ c.osm_type }}/{{ c.osm_id }}/{{ c.version }}/{{ c.latitude }}/{{ c.longitude }}">
+            <strong>{{ c.name|default:"(unnamed)" }}</strong>
+            <span class="ov-score">— {{ c.osm_type }} {{ c.osm_id }}{% if c.version %} v{{ c.version }}{% endif %}, score {{ c.score }}</span>
+            {% if c.summary %}<span class="ov-tags"> · {{ c.summary }}</span>{% endif %}
+            {% if c.wikidata_qid %}<span class="ov-tags"> · {{ c.wikidata_qid }}</span>{% endif %}
+            <a href="{{ c.osm_url }}" target="_blank" rel="noopener noreferrer">view on OSM</a>
+            <span class="ov-score">({{ c.latitude|floatformat:5 }}, {{ c.longitude|floatformat:5 }})</span>
+          </label>
+        {% endfor %}
+        {% with first=candidates.0 %}
+          <input type="hidden" name="qid-{{ site.pk }}" value="{{ first.wikidata_qid }}">
+        {% endwith %}
+      {% else %}
+        <p class="ov-none">
+          No candidates. The name may differ in OSM, or the district may not exist
+          there under the name we store. Enter the coordinate by hand on the site's
+          own page and set the source to <em>Manual</em>.
+        </p>
+      {% endif %}
+
+      <label class="ov-cand">
+        <input type="radio" name="choice-{{ site.pk }}" value="skip" checked>
+        Skip this site
+      </label>
+    </div>
+  {% endfor %}
+
+  <input type="hidden" name="action" value="seed_from_overpass">
+  <input type="submit" name="apply" class="default" value="Save selected locations">
+  <a href="." class="button cancel-link">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,77 @@
+# Project Tirtha — {{ deployment }}
+#
+# Crawling and scraping are disallowed in full.
+#
+# The 3D models here are built from photographs contributed by members of the
+# public under CC BY-NC-SA 4.0 / CC BY-NC-ND 4.0. Those licences require
+# attribution and forbid commercial use; bulk ingestion strips both. The
+# contributors gave their work to a heritage archive, not to a training corpus.
+#
+# Machine-readable AI usage terms: {{ llms_url }}
+
+User-agent: *
+Disallow: {{ scope }}
+
+# Named AI crawlers and scrapers. The wildcard above already covers them; they
+# are listed explicitly because several honour a specific token more reliably
+# than a wildcard, and because being explicit leaves no room for the argument
+# that the policy was ambiguous.
+User-agent: GPTBot
+Disallow: {{ scope }}
+
+User-agent: OAI-SearchBot
+Disallow: {{ scope }}
+
+User-agent: ChatGPT-User
+Disallow: {{ scope }}
+
+User-agent: ClaudeBot
+Disallow: {{ scope }}
+
+User-agent: Claude-Web
+Disallow: {{ scope }}
+
+User-agent: anthropic-ai
+Disallow: {{ scope }}
+
+User-agent: Google-Extended
+Disallow: {{ scope }}
+
+User-agent: Applebot-Extended
+Disallow: {{ scope }}
+
+User-agent: PerplexityBot
+Disallow: {{ scope }}
+
+User-agent: Perplexity-User
+Disallow: {{ scope }}
+
+User-agent: CCBot
+Disallow: {{ scope }}
+
+User-agent: Bytespider
+Disallow: {{ scope }}
+
+User-agent: Amazonbot
+Disallow: {{ scope }}
+
+User-agent: meta-externalagent
+Disallow: {{ scope }}
+
+User-agent: FacebookBot
+Disallow: {{ scope }}
+
+User-agent: cohere-ai
+Disallow: {{ scope }}
+
+User-agent: Diffbot
+Disallow: {{ scope }}
+
+User-agent: omgili
+Disallow: {{ scope }}
+
+User-agent: Timpibot
+Disallow: {{ scope }}
+
+User-agent: img2dataset
+Disallow: {{ scope }}

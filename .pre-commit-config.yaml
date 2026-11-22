@@ -1,22 +1,14 @@
+# Linting and formatting are consolidated on ruff (internal design notes).
+# flake8 and black were removed: ruff-check subsumes flake8 (+bugbear via the B
+# rules) and ruff-format subsumes black, and running both pairs produced
+# contradictory reformatting.
 repos:
-  - repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
     hooks:
-      - id: flake8
-        additional_dependencies: [flake8-bugbear]
-        args: [--max-line-length=120, --select=B, --ignore=B006,E203,W503,W504]
-
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-        language_version: python3.11
-
-  # NOTE: Prefer black over isort
-  # - repo: https://github.com/PyCQA/isort
-  #   rev: 5.12.0
-  #   hooks:
-  #     - id: isort
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
@@ -25,14 +17,14 @@ repos:
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: mixed-line-ending
-      - id: requirements-txt-fixer
       - id: trailing-whitespace
-      
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.1
+
+  # detect-private-key above catches key material only -- it would not have
+  # caught build/tirtha.env, which carried a SECRET_KEY, three service passwords
+  # and a Gmail app password in plain `KEY=value` form from 2024-03-06 until
+  # 2026-08-31. gitleaks covers that shape. gunicorn.env stays tracked as a
+  # placeholder; this is what keeps it that way.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
     hooks:
-      # Run the linter
-      - id: ruff-check
-        args: [--fix]
-      # Run the formatter
-      - id: ruff-format
+      - id: gitleaks

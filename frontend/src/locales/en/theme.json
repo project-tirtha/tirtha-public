@@ -1,0 +1,6 @@
+{
+  "toggle": "Toggle Theme",
+  "lightMode": "Light Mode",
+  "darkMode": "Dark Mode",
+  "currentTheme": "Current Theme: {{theme}}"
+}

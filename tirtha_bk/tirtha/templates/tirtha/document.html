@@ -1,0 +1,54 @@
+{% comment %}
+A canonical legal or informational document, on a URL of its own.
+
+The React sidebar carried its own copies of the Terms of Use and Privacy Policy
+-- rewritten, shorter, and *different*, while the request form asked people to
+consent to them. A paraphrase of a legal document, presented as that document,
+is not a shortcut; it is a second document nobody wrote.
+
+There is now exactly one copy of each, here, and everything links to it. That
+also means a crawler and a person get the same text, and a change is made in one
+place.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="{{ language|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · Project Tirtha</title>
+  <meta name="description" content="{{ title }} for Project Tirtha.">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <style nonce="{{ request.csp_nonce }}">
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0 auto;
+      max-width: 44rem;
+      padding: 2rem 1.25rem 4rem;
+      font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    h1 { font-size: 1.5rem; }
+    /* The documents are authored as <details> for the legacy index's accordion.
+       The view adds `open`; this styles the summary as the page heading. */
+    details { display: block; }
+    details > summary { display: block; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+    details > summary::marker, details > summary::-webkit-details-marker { display: none; content: ""; }
+    li { margin-bottom: 0.6rem; }
+    a { color: #1d4ed8; }
+    @media (prefers-color-scheme: dark) { a { color: #93c5fd; } }
+    .back { display: inline-block; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="{{ app_url }}">&larr; {{ back_label }}</a>
+  {% comment %}
+  Rendered by the view rather than included here, so the document's own
+  <details> can be given `open`. These files are the legacy index's accordion;
+  on a page of their own, folded is wrong, and `display: block` does not unfold
+  a closed <details>.
+
+  A `{#...#}` comment cannot say that: Django's single-line comment does not
+  span lines, so the tag syntax inside it was parsed as a real tag.
+  {% endcomment %}
+  {{ document_body }}
+</body>
+</html>

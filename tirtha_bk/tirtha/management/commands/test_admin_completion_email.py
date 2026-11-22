@@ -1,7 +1,7 @@
-from django.core.management.base import BaseCommand
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.core.management.base import BaseCommand
+from django.template.loader import render_to_string
 
 
 class Command(BaseCommand):
@@ -20,12 +20,12 @@ class Command(BaseCommand):
         self.stdout.write("Testing admin run completion email notification...")
 
         # Create mock objects for testing
-        mock_mesh = type(
+        mock_site = type(
             "MockMesh",
             (),
             {
                 "name": "Test Heritage Temple",
-                "ID": "test-mesh-admin-12345",
+                "ID": "test-site-admin-12345",
             },
         )()
 
@@ -34,7 +34,7 @@ class Command(BaseCommand):
             (),
             {
                 "ID": "test-contrib-admin-uuid-12345",
-                "mesh": mock_mesh,
+                "site": mock_site,
             },
         )()
 
@@ -52,13 +52,13 @@ class Command(BaseCommand):
             )
 
         # Prepare email content
-        subject = f"Run Completed Successfully: {mock_mesh.name} - MeshOps"
+        subject = f"Run Completed Successfully: {mock_site.name} - MeshOps"
 
         # Template context
         context = {
             "contribution_id": mock_contribution.ID,
-            "mesh_id": mock_mesh.ID,
-            "mesh_name": mock_mesh.name,
+            "site_id": mock_site.ID,
+            "site_name": mock_site.name,
             "contributor_email": "test.contributor@example.com",
             "contributor_name": "Test Contributor",
             "operation_type": "aV",  # Will be displayed as "Photogrammetry" in template
@@ -69,7 +69,7 @@ class Command(BaseCommand):
             "arks_info_url": "https://arks.org/",
             "base_url": settings.BASE_URL,
             "contribution_admin_url": f"{settings.BASE_URL}/admin/tirtha/contribution/{mock_contribution.ID}/change/",
-            "mesh_admin_url": f"{settings.BASE_URL}/admin/tirtha/mesh/{mock_mesh.ID}/change/",
+            "site_admin_url": f"{settings.BASE_URL}/admin/tirtha/site/{mock_site.ID}/change/",
             "base_admin_url": f"{settings.BASE_URL}/admin/",
         }
 

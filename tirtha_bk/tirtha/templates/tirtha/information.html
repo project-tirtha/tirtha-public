@@ -1,10 +1,10 @@
-<details open id="mesh-details">
+<details open id="site-details">
     {% block info %}
     {% if run %}
-    <summary id="mesh-name">About {{ run.mesh.name }}</summary>
+    <summary id="site-name">About {{ run.site.name }}</summary>
     <div class="details-inner">
-        <p id="mesh-info">
-            {{ run.mesh.description | safe }}
+        <p id="site-info">
+            {{ run.site.description | safe }}
         </p>
         <hgroup>
             <h4 id="info-h4">Model Statistics</h4>
@@ -36,11 +36,11 @@
             </ul>
         </hgroup>
     </div>
-    {% elif mesh %}
-    <summary id="mesh-name">About {{ mesh.name }}</summary>
+    {% elif site %}
+    <summary id="site-name">About {{ site.name }}</summary>
     <div class="details-inner">
-        <p id="mesh-info">
-            {{ mesh.description | safe }}
+        <p id="site-info">
+            {{ site.description | safe }}
         </p>
         {% comment %} NOTE: Not doing XHR anymore for GS Runs {% endcomment %}
         <hgroup>
@@ -60,10 +60,10 @@
                 <li id="contrib-count">
                     {% comment %} Since the reconstruction isn't done yet,
                     only show number of contributions {% endcomment %}
-                    Contributions: {{ mesh_contribution_count }}
+                    Contributions: {{ site_contribution_count }}
                 </li>
                 <li id="images-count">
-                    Images: {{ mesh_images_count }}
+                    Images: {{ site_images_count }}
                 </li>
                 <li id="run-ark" title="A persistent identifier for this run">
                     ARK: <a id="run-ark-link" href="javascript:;">N.A.</a>

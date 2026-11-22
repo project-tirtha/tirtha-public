@@ -303,7 +303,7 @@ $("#search").on("input", function (e) {
                         "<div class='model-preview-inner' style='background-image: url("
                         + resp.meshes_json[mesh].thumb_url +
                         "); background-size: cover;'><div class='model-title'>"
-                        + mesh +
+                        + resp.meshes_json[mesh].name +
                         "</div></div></a>" 
                     );
                 });

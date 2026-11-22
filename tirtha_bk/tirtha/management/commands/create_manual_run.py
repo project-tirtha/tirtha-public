@@ -2,24 +2,23 @@ import json
 import shutil
 from pathlib import Path
 
-from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
-from django.utils import timezone
+from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError
+from django.utils import timezone
 
 # Local imports
-from tirtha.models import Mesh, Run, ARK, Contributor
+from tirtha.models import ARK, Contributor, Run, Site
 from tirtha.utilsark import generate_noid, noid_check_digit
-
 
 ADMIN_MAIL = getattr(settings, "ADMIN_MAIL", None)
 
 
 class Command(BaseCommand):
-    help = "Create a manual Run for a Mesh and publish a provided .glb/.splat file with an ARK."
+    help = "Create a manual Run for a Site and publish a provided .glb/.splat file with an ARK."
 
     def add_arguments(self, parser):
-        parser.add_argument("mesh", help="Mesh ID or Mesh verbose_id (VID)")
+        parser.add_argument("site", help="Site ID or Site verbose_id (VID)")
         parser.add_argument(
             "file", help="Path to .glb or .splat file to publish for the Run"
         )
@@ -38,21 +37,21 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        mesh_ident = options["mesh"]
+        mesh_ident = options["site"]
         file_path = Path(options["file"]).expanduser()
 
         if not file_path.exists():
             raise CommandError(f"File not found: {file_path}")
 
-        # Resolve mesh by ID or verbose_id
-        mesh = None
+        # Resolve site by ID or verbose_id
+        site = None
         try:
-            mesh = Mesh.objects.get(ID=mesh_ident)
-        except Mesh.DoesNotExist:
+            site = Site.objects.get(ID=mesh_ident)
+        except Site.DoesNotExist:
             try:
-                mesh = Mesh.objects.get(verbose_id=mesh_ident)
-            except Mesh.DoesNotExist:
-                raise CommandError(f"Mesh not found for identifier: {mesh_ident}")
+                site = Site.objects.get(verbose_id=mesh_ident)
+            except Site.DoesNotExist:
+                raise CommandError(f"Site not found for identifier: {mesh_ident}")
 
         suffix = file_path.suffix.lower().lstrip(".")
         if suffix == "glb":
@@ -63,7 +62,7 @@ class Command(BaseCommand):
             raise CommandError("Unsupported file type. Provide a .glb or .splat file.")
 
         # Create Run (status Manual)
-        run = Run.objects.create(mesh=mesh, kind=kind, status="Manual")
+        run = Run.objects.create(site=site, kind=kind, status="Manual")
 
         # Associate contributor: provided email or admin user (ADMIN_MAIL / ADMIN_NAME)
         admin_email = getattr(settings, "ADMIN_MAIL", None)
@@ -83,10 +82,10 @@ class Command(BaseCommand):
 
         # Ensure published directory exists and copy file
         static_root = Path(settings.STATIC_ROOT)
-        pub_dir = static_root / f"models/{mesh.ID}/published"
+        pub_dir = static_root / f"models/{site.ID}/published"
         pub_dir.mkdir(parents=True, exist_ok=True)
 
-        dest_fname = f"{mesh.ID}_{run.ID}.{suffix}"
+        dest_fname = f"{site.ID}_{run.ID}.{suffix}"
         dest_path = pub_dir / dest_fname
         shutil.copy2(file_path, dest_path)
 
@@ -99,14 +98,14 @@ class Command(BaseCommand):
 
         metadata = {
             "monument": {
-                "name": str(mesh.name),
-                "location": f"{mesh.district}, {mesh.state}, {mesh.country}",
-                "verbose_id": str(mesh.verbose_id),
-                "thumbnail": f"{base_url}{mesh.thumbnail.url}"
-                if mesh.thumbnail
+                "name": str(site.name),
+                "location": f"{site.district}, {site.state}, {site.country}",
+                "verbose_id": str(site.verbose_id),
+                "thumbnail": f"{base_url}{site.thumbnail.url}"
+                if site.thumbnail
                 else "",
-                "description": str(mesh.description),
-                "completed": True if mesh.completed else False,
+                "description": str(site.description),
+                "completed": True if site.completed else False,
             },
             "run": {
                 "ID": str(run.ID),
@@ -135,7 +134,7 @@ class Command(BaseCommand):
                     naan=naan,
                     shoulder=shoulder,
                     assigned_name=f"{noid}{check_digit}",
-                    url=f"{base_url}/static/models/{mesh.ID}/published/{dest_fname}",
+                    url=f"{base_url}/static/models/{site.ID}/published/{dest_fname}",
                     metadata=metadata_json,
                 )
                 break
@@ -147,7 +146,7 @@ class Command(BaseCommand):
         run.save()
 
         self.stdout.write(
-            self.style.SUCCESS(f"Created Manual Run {run.ID} for Mesh {mesh.ID}")
+            self.style.SUCCESS(f"Created Manual Run {run.ID} for Site {site.ID}")
         )
         self.stdout.write(self.style.SUCCESS(f"Published file: {dest_path}"))
         self.stdout.write(

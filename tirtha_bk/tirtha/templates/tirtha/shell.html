@@ -1,0 +1,101 @@
+{% comment %}
+The React shell, served by Django (internal design notes).
+
+The meta tags are the entire reason this is a Django template rather than a
+static index.html. Unfurl crawlers -- X, Slack, WhatsApp, Facebook, Threads --
+do not execute JavaScript, so a client-rendered SPA serves them an empty shell
+and every shared link degrades to a blank card. These tags are rendered per
+route, server-side, before React loads.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="{{ language|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% comment %}
+  Django owns the URL prefix (PRE_URL); the bundle reads it from here rather
+  than hardcoding, so beta and production run the same build.
+  {% endcomment %}
+  <meta name="tirtha-prefix" content="{{ url_prefix }}">
+  {# What the site shows, from config/display.json. See tirtha/display.py. #}
+  <meta name="tirtha-display" content="{{ display_config }}">
+  {% comment %}
+  The CSRF token, for the POSTs the bundle makes (site requests, uploads).
+  Emitted here rather than left to the cookie alone: `get_token` in the view
+  sets the cookie, but reading it from JavaScript stops working the moment
+  CSRF_COOKIE_HTTPONLY is turned on, and that is a setting worth being able to
+  turn on.
+  {% endcomment %}
+  <meta name="csrf-token" content="{{ csrf_token_value }}">
+  {% comment %}
+  The CSP nonce, for the one library that injects its own <style> elements.
+  `@mkkellogg/gaussian-splats-3d` adds three of them for a loading UI we
+  disable anyway (`showLoadingUI: false`), and `style-src` blocks all three --
+  six console errors on every model load, in the exact channel an operator is
+  told to watch for real violations. See `utils/styleNonce.js`.
+  {% endcomment %}
+  <meta name="csp-nonce" content="{{ request.csp_nonce }}">
+
+  <link rel="icon" href="{{ favicon_url }}" sizes="any">
+  <title>{{ og_title }}</title>
+  <meta name="description" content="{{ og_description }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  {% comment %}
+  A crawler must know these are the same page in another language, not
+  duplicates competing with each other (internal design notes).
+  {% endcomment %}
+  {% for alt in alternates %}
+  <link rel="alternate" hreflang="{{ alt.lang }}" href="{{ alt.url }}">
+  {% endfor %}
+
+  <meta property="og:type" content="{{ og_type|default:'website' }}">
+  <meta property="og:site_name" content="Project Tirtha">
+  <meta property="og:title" content="{{ og_title }}">
+  <meta property="og:description" content="{{ og_description }}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:locale" content="{{ language }}">
+  {% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ og_title }}">
+  <meta name="twitter:description" content="{{ og_description }}">
+  {% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
+
+  {# oEmbed discovery: platforms look for this on the canonical page. #}
+  <link rel="alternate" type="application/json+oembed"
+        href="{{ oembed_url }}" title="{{ og_title }}">
+
+  {% for href in vite_css %}<link rel="stylesheet" href="{{ href }}">{% endfor %}
+  {% comment %}
+  The chunks the entry statically imports (maplibre, react, i18n, the runtime).
+  Named here, they start downloading with the entry instead of after it: they
+  are 78% of the eager bundle and the browser cannot discover them until the
+  entry has been fetched *and* parsed, so without these links every visitor
+  pays an extra serialized round trip before the map can start loading.
+
+  No `crossorigin`, deliberately, unlike Vite's own index.html: the module
+  script below does not carry it either, and a preload whose credentials mode
+  differs from the script's is fetched twice rather than reused.
+  {% endcomment %}
+  {% for href in vite_preload %}<link rel="modulepreload" href="{{ href }}">{% endfor %}
+</head>
+<body>
+  {% comment %}
+  Always rendered, not only when the build is missing: a visitor with
+  JavaScript disabled otherwise gets an empty page with no explanation.
+  {% endcomment %}
+  <noscript>
+    <p>Project Tirtha's map and 3D viewer need JavaScript. Please enable it,
+    or read the <a href="{% url 'howto' %}">how-to guide</a>.</p>
+  </noscript>
+  <div id="root"></div>
+  {% for src in vite_js %}<script type="module" src="{{ src }}"></script>{% endfor %}
+  {% if not vite_js %}
+  {# No build present. Say so plainly rather than showing a blank page. #}
+  <p data-tirtha-no-build>
+    The frontend bundle is not built. Run <code>npm run build</code> in
+    <code>frontend/</code>, or start the Vite dev server.
+  </p>
+  {% endif %}
+</body>
+</html>

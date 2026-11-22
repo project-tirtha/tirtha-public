@@ -4,12 +4,13 @@ set -euo pipefail
 # start-dev.sh
 # - Installs Miniconda (user-local) and creates a conda env with COLMAP
 # - Installs Node/npm via nvm and global tools obj2gltf + gltfpack (user-local)
-# - Creates Python venv, installs requirements, runs migrations/collectstatic, and starts devserver
-# Usage: ./start-dev.sh
+# - Creates .venv with uv (uv.lock), runs migrations/collectstatic, and starts devserver
+# Requires tirtha-recon cloned beside this repository (../tirtha-recon).
+# Usage: ./start-dev.sh   (from the repository root)
 
 # Check for required host tools and print install instructions if missing
 check_prereqs() {
-  required=(curl git wget unzip python3.11)
+  required=(curl git wget unzip)
   missing=()
   for cmd in "${required[@]}"; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -28,19 +29,22 @@ check_prereqs() {
 
 check_prereqs
 
-# Getting submodules for ImageOps models - Must be run as the user (not root)
-# CHANGEME: NOTE: Comment out to skip ImageOps models
-git config --global http.postBuffer 524288000
-git submodule update --init --recursive
+if [ ! -f "../tirtha-recon/pyproject.toml" ]; then
+  echo "ERROR: clone https://github.com/project-tirtha/tirtha-recon beside this repository (../tirtha-recon)."
+  exit 1
+fi
 
-# Getting the pre-trained checkpoints for ImageOps models
-# CHANGEME: NOTE: Comment these out to skip the ImageOps models
+# The VGGT submodule is only needed for the experimental VGGT path (off by
+# default): git submodule update --init tirtha_bk/nn_models/vggt
+
+# AliceVision binaries for the photogrammetry (aV) path.
+# CHANGEME: NOTE: Comment these out to skip the aV path
 wget https://smlab.niser.ac.in/project/tirtha/static/artifacts/MR2021.1.0.zip \
   && unzip MR2021.1.0.zip \
   && mv ./bin21/ ./tirtha_bk/bin21/ \
   && rm ./MR2021.1.0.zip
-wget https://smlab.niser.ac.in/project/tirtha/static/artifacts/ckpt_kadid10k.pt \
-  && mv ./ckpt_kadid10k.pt ./tirtha_bk/nn_models/MANIQA/
+# MANIQA and its KADID-10k checkpoint were removed in Phase 5.1 (internal design notes):
+# it scores synthetic distortion, not whether an image will register in COLMAP.
 
 USER_CONDA_DIR="$HOME/miniconda3"
 CONDA_ENV_NAME="tirtha-conda"
@@ -123,17 +127,15 @@ install_miniconda
 create_conda_colmap
 install_node_tools
 
-echo "=== Preparing Python venv and project dependencies ==="
-if [ ! -d .venv ]; then
-  python3.11 -m venv .venv
+echo "=== Preparing Python environment with uv ==="
+# uv creates .venv, resolves from pyproject.toml and pins from uv.lock.
+if ! command -v uv >/dev/null 2>&1; then
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
 fi
+uv sync --frozen
 # shellcheck disable=SC1091
 source .venv/bin/activate
-
-pip install --upgrade pip setuptools wheel
-pip install -r ./requirements.txt --default-timeout=2000
-pip install -e ./tirtha_bk/nn_models/nsfw_model/
-pip install protobuf==3.20.3
 
 export TIRTHA_DEV=1
 export DJANGO_SECRET_KEY='django-secret-change-me'  # CHANGEME:
@@ -142,6 +144,7 @@ export DJANGO_SUPERUSER_NAME='dbadmin'  # CHANGEME:
 export DJANGO_SUPERUSER_EMAIL='tadmin@example.com'  # CHANGEME:
 export DJANGO_SUPERUSER_PASSWORD='tadminpwd'  # CHANGEME:
 
+cd tirtha_bk
 echo "Running migrations (dev)..."
 python manage.py makemigrations --noinput || true
 python manage.py migrate --noinput
@@ -151,7 +154,7 @@ python manage.py collectstatic --noinput
 
 # Create superuser
 echo "Creating superuser..."
-DJANGO_SUPERUSER_PASSWORD=$DJANGO_SUPERUSER_PASSWORD python ./tirtha_bk/manage.py createsuperuser --no-input --username $DJANGO_SUPERUSER_NAME --email "$DJANGO_SUPERUSER_EMAIL"
+DJANGO_SUPERUSER_PASSWORD=$DJANGO_SUPERUSER_PASSWORD python manage.py createsuperuser --no-input --username $DJANGO_SUPERUSER_NAME --email "$DJANGO_SUPERUSER_EMAIL"
 
 echo "=== Starting Django development server ==="
 python manage.py runserver 0.0.0.0:8000

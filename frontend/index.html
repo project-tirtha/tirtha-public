@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The Content-Security-Policy is sent as a header by
+         SecurityHeadersMiddleware (internal design notes). A meta tag cannot express
+         frame-ancestors and cannot be report-only, and this one allowed
+         'unsafe-inline' and 'unsafe-eval' for scripts, which is most of what a
+         CSP is for. -->
+    <!--
+      The Material Icons font used to be linked here, and that is why every icon
+      rendered as its own name in production. Vite serves this file for
+      `npm run dev`; Django serves `templates/tirtha/shell.html`, which injects
+      only the JS and CSS the build manifest lists. A <link> written here reaches
+      the dev server and nothing else -- so the icons worked locally and broke
+      the moment they were deployed.
+
+      They are inline SVG now (`components/Icon.jsx`), which needs no font, no
+      second request and no third-party origin.
+    -->
+    <title>Project Tirtha</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

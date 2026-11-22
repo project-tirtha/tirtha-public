@@ -1,0 +1,26 @@
+/*
+  The embed fills its iframe and leaves the bottom strip to the template's
+  credit line (`embed.html`), which is fixed over it.
+*/
+.embed-root {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.embed-root .model-viewer-container {
+  min-height: 0;
+  border-radius: 0;
+}
+
+.embed-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  margin: 0;
+  padding: 1rem 1rem 3rem;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 14px;
+}

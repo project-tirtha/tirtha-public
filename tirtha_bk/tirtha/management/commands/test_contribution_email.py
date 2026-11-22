@@ -1,7 +1,7 @@
-from django.core.management.base import BaseCommand
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.core.management.base import BaseCommand
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 
@@ -19,12 +19,12 @@ class Command(BaseCommand):
         self.stdout.write("Testing new contribution email notification...")
 
         # Create mock objects for testing
-        mock_mesh = type(
+        mock_site = type(
             "MockMesh",
             (),
             {
                 "name": "Test Meditation Center",
-                "ID": "test-mesh-12345",
+                "ID": "test-site-12345",
                 "district": "Test District",
                 "state": "Test State",
                 "country": "Test Country",
@@ -45,7 +45,7 @@ class Command(BaseCommand):
             (),
             {
                 "ID": "test-contribution-uuid-12345",
-                "mesh": mock_mesh,
+                "site": mock_site,
                 "contributor": mock_contributor,
                 "contributed_at": timezone.now(),
                 "processed": False,
@@ -71,7 +71,7 @@ class Command(BaseCommand):
         total_contributions = 8
 
         # Prepare email content
-        subject = f"New Contribution: {mock_mesh.name} - {image_count} images"
+        subject = f"New Contribution: {mock_site.name} - {image_count} images"
 
         # Template context
         context = {
@@ -80,7 +80,7 @@ class Command(BaseCommand):
             "total_images": total_images,
             "total_contributions": total_contributions,
             "contribution_admin_url": f"{settings.BASE_URL}/admin/tirtha/contribution/{mock_contribution.ID}/change/",
-            "mesh_admin_url": f"{settings.BASE_URL}/admin/tirtha/mesh/{mock_mesh.ID}/change/",
+            "site_admin_url": f"{settings.BASE_URL}/admin/tirtha/site/{mock_site.ID}/change/",
             "base_admin_url": f"{settings.BASE_URL}/admin/",
         }
 

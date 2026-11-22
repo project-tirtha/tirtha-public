@@ -1,0 +1,42 @@
+# Project Tirtha — {{ deployment }}
+
+> Crowdsourced 3D reconstructions of cultural heritage sites, built from
+> photographs contributed by the public. A research project of the Smart
+> Machines Lab, NISER Bhubaneswar.
+
+## Usage terms for automated agents and model training
+
+**Do not crawl, scrape, index, or ingest this site or its artifacts for
+training, fine-tuning, retrieval augmentation, or dataset construction.**
+
+This is not a general-interest restriction. It follows from what the content
+is:
+
+- **The 3D models are licensed CC BY-NC-SA 4.0 / CC BY-NC-ND 4.0.** Both
+  require attribution and forbid commercial use; ND additionally forbids
+  derivatives. Bulk ingestion into a model strips attribution by construction
+  and cannot honour either term.
+- **The photographs were contributed by named individuals** to a cultural
+  heritage archive. They consented to their images being used to reconstruct
+  heritage sites, not to being redistributed as training data.
+- **The site data includes contributor identities and, for some records,
+  location information.** India's Digital Personal Data Protection Act 2023
+  applies.
+
+`/robots.txt` states the same policy in the form crawlers read.
+
+## If you want this data
+
+Ask. Research use is welcome and has been granted before, on terms that keep
+attribution and the licence intact.
+
+- Project: https://smlab.niser.ac.in/project/tirtha/
+- Contact: the Smart Machines Lab, NISER Bhubaneswar
+- Source code: https://github.com/project-tirtha/tirtha-public (AGPL-3.0)
+
+## What is here
+
+- Heritage site pages, each with reconstructions and contributor credits
+- A public JSON API under `/api/v1/` — same terms
+- Embeddable viewers under `/embed/` — attribution is rendered inside the frame
+  and must not be removed

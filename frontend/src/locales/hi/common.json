@@ -1,0 +1,14 @@
+{
+  "appName": "प्रोजेक्ट तीर्थ",
+  "beta": "बीटा",
+  "buttons": {
+    "contribute": "योगदान करें",
+    "requestSite": "स्थल का अनुरोध",
+    "hideInfo": "जानकारी छिपाएँ",
+    "open": "खोलें"
+  },
+  "placeholders": {
+    "searchModels": "मॉडल खोजें",
+    "searchFor": "{{site}} खोजें"
+  }
+}

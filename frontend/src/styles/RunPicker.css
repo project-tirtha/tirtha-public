@@ -1,0 +1,56 @@
+/*
+  The select and the notice only. Where the control sits in the viewer header,
+  and how much of the header it may take, is decided by the header's own
+  stylesheet -- this one styles the thing itself.
+*/
+.run-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* A flex item defaults to `min-width: auto`, which is the width of its
+     widest content -- here an optgroup label plus a medium date plus
+     "(latest)". On a 360px phone that content is wider than the header slot
+     can spare, and an item that refuses to shrink pushes the close button off
+     the edge of the dialog. Zero lets the header decide. */
+  min-width: 0;
+}
+
+.run-picker-select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 6px 28px 6px 10px;
+  border: 1.5px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  font: inherit;
+  font-size: 0.85rem;
+  box-sizing: border-box;
+  /* An ellipsis rather than overflow when the header is narrower than the
+     selected option's text: the popup still shows the full label. */
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.run-picker-select:hover {
+  border-color: var(--input-focus-border);
+}
+
+.run-picker-select:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The fallback explanation. Informational, not an error -- the visitor is
+   looking at a working model, just not the one their link named. */
+.run-picker-notice {
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--info-border);
+  border-radius: 8px;
+  background: var(--info-bg);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}

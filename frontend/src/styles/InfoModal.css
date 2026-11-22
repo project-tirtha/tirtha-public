@@ -1,0 +1,259 @@
+.info-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  transition: background-color 0.25s ease-out, backdrop-filter 0.25s ease-out;
+  pointer-events: none;
+}
+
+.info-modal-overlay.info-modal--active {
+  background-color: rgba(15, 23, 42, 0.45);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.info-modal-container {
+  background: var(--bg-primary, var(--surface-raised));
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+  border-radius: 14px;
+  width: min(95%, 540px);
+  max-height: 80vh;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95) translateY(10px);
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease-out;
+}
+
+.info-modal-overlay.info-modal--active .info-modal-container {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.info-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  background: var(--bg-primary, var(--surface-raised));
+}
+
+.info-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--text-primary));
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.info-modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, var(--text-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.info-modal-close-btn:hover,
+.info-modal-close-btn:focus-visible {
+  background-color: var(--bg-hover, rgba(15, 23, 42, 0.06));
+  color: var(--text-primary, var(--text-primary));
+  outline: none;
+}
+
+.info-modal-close-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--btn-primary-bg, #2563eb);
+}
+
+.info-modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  font-size: 0.975rem;
+  line-height: 1.625;
+  color: var(--text-primary, var(--text-primary));
+}
+
+/* Custom scrollbar styling inside the scrollable container */
+.info-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.info-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.info-modal-body::-webkit-scrollbar-thumb {
+  background: var(--border-color, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+}
+
+.info-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary, rgba(0, 0, 0, 0.24));
+}
+
+/* Modal text styling to ensure comfortable line-length readability */
+.info-modal-text {
+  margin: 0 0 16px 0;
+  max-width: 65ch; /* Comfort limit for horizontal readability */
+}
+
+.info-modal-text:last-child {
+  margin-bottom: 0;
+}
+
+.info-modal-link {
+  color: var(--btn-primary-bg, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dotted transparent;
+  transition: border-bottom-color 0.2s ease;
+}
+
+.info-modal-link:hover {
+  border-bottom-color: var(--btn-primary-bg, #2563eb);
+}
+
+.info-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  display: flex;
+  justify-content: flex-end;
+  background: var(--bg-primary, var(--surface-raised));
+}
+
+.info-modal-ok-btn {
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Respect prefers-reduced-motion media query */
+@media (prefers-reduced-motion: reduce) {
+  .info-modal-overlay,
+  .info-modal-container {
+    transition: none !important;
+  }
+}
+
+/* Responsive adjustment for mobile viewports */
+@media (max-width: 600px) {
+  .info-modal-container {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+  
+  .info-modal-overlay {
+    padding: 0;
+  }
+
+  .info-modal-header {
+    padding: 16px 20px;
+  }
+
+  .info-modal-body {
+    padding: 20px;
+  }
+
+  .info-modal-footer {
+    padding: 12px 20px;
+  }
+}
+
+/*
+  A canonical document, rendered inside the dialog.
+
+  `api.document` returns the same markup the standalone page renders, and that
+  markup carries no styling of its own -- it was authored for the legacy index,
+  whose stylesheet this app does not load. Dropped into the dialog it came out
+  at the browser's defaults: 16px paragraphs, a 2em `<summary>`, 40px list
+  indents, and margins from a 1996 document rather than from this panel.
+
+  Sized against `.info-modal-body` (0.975rem) rather than against the browser,
+  so a document and the app's own prose read as the same dialog.
+*/
+.info-modal-document {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/*
+  The `<summary>` is a heading here, not a control.
+
+  The document is served with `<details open>` -- the wrapper exists because
+  these were written as an accordion for the legacy index. In a dialog whose
+  header already says "Terms of Use", the summary's job is the rest of the
+  line: the "[Updated: ...]" date, which is the part that matters legally. So
+  it keeps its text and loses the disclosure marker and the pointer, which
+  promise a fold nobody wants here.
+*/
+.info-modal-document summary {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+  cursor: default;
+  list-style: none;
+}
+
+.info-modal-document summary::-webkit-details-marker,
+.info-modal-document summary::marker {
+  display: none;
+}
+
+.info-modal-document p {
+  margin: 0 0 10px;
+}
+
+.info-modal-document ul,
+.info-modal-document ol {
+  /* 18px, not the browser's 40: at this width a deep indent costs a third of
+     the line to say something the bullet already says. */
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.info-modal-document li {
+  margin-bottom: 7px;
+}
+
+.info-modal-document li:last-child {
+  margin-bottom: 0;
+}
+
+.info-modal-document a {
+  color: var(--sidebar-link, #1565c0);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.info-modal-document strong {
+  font-weight: 600;
+}
+
+/* The documents nest their body in this; it is a wrapper, not a box. */
+.info-modal-document .details-inner {
+  margin: 0;
+  padding: 0;
+}

@@ -34,13 +34,20 @@ Key Features
 • Resolution Preservation: Maintains original image resolution in camera parameters and tracks
 • COLMAP Compatibility: Exports results in standard COLMAP sparse reconstruction format
 
+
+Dependencies: torch is no longer part of the default install (review
+2026-11-22; torch 2.1.2's advisories). VGGT_ENABLE is off in production. To use
+this module, install a current CUDA torch (and torchvision) into the
+environment that runs it, e.g. `uv pip install torch torchvision --index-url
+https://download.pytorch.org/whl/cu126`, and test it before enabling.
 """
 
-import random
-import numpy as np
+import copy
 import glob
 import os
-import copy
+import random
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -50,21 +57,19 @@ torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
 
 import argparse
-import trimesh
+
 import pycolmap
-
-
-from vggt.models.vggt import VGGT
-from vggt.utils.load_fn import load_and_preprocess_images_square
-from vggt.utils.pose_enc import pose_encoding_to_extri_intri
-from vggt.utils.geometry import unproject_depth_map_to_point_map
-from vggt.utils.helper import create_pixel_coordinate_grid, randomly_limit_trues
-from vggt.dependency.track_predict import predict_tracks
+import trimesh
 from vggt.dependency.np_to_pycolmap import (
     batch_np_matrix_to_pycolmap,
     batch_np_matrix_to_pycolmap_wo_track,
 )
-
+from vggt.dependency.track_predict import predict_tracks
+from vggt.models.vggt import VGGT
+from vggt.utils.geometry import unproject_depth_map_to_point_map
+from vggt.utils.helper import create_pixel_coordinate_grid, randomly_limit_trues
+from vggt.utils.load_fn import load_and_preprocess_images_square
+from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 
 # TODO: add support for masks
 # TODO: add iterative BA

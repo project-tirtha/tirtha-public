@@ -1,5 +1,8 @@
-from django.core.management.base import BaseCommand
+from pathlib import Path
+
 from django.conf import settings
+from django.core.management.base import BaseCommand
+
 from tirtha.email_utils import send_contribution_processing_failure_email
 
 
@@ -20,8 +23,8 @@ class Command(BaseCommand):
 
         # Mock test data
         test_contribution_id = "test-contrib-12345678"
-        test_mesh_id = "test-mesh-87654321"
-        test_mesh_name = "Test Heritage Site"
+        test_site_id = "test-site-87654321"
+        test_site_name = "Test Heritage Site"
         test_contributor_email = "test.contributor@example.com"
         test_processing_step = "Image Quality Check"
         test_error_message = """
@@ -31,7 +34,7 @@ ValueError: Image quality assessment failed
     
 This is a test error message to verify email notifications are working correctly.
         """.strip()
-        test_log_file = "/var/www/tirtha/prod/logs/ImageOps/ImageOps_test.log"
+        test_log_file = str(Path(settings.LOG_DIR) / "ImageOps" / "ImageOps_test.log")
         test_run_id = "test-run-11223344"
         test_operation_type = "ImageOps"
 
@@ -39,8 +42,8 @@ This is a test error message to verify email notifications are working correctly
             # Send test email
             success = send_contribution_processing_failure_email(
                 contribution_id=test_contribution_id,
-                mesh_id=test_mesh_id,
-                mesh_name=test_mesh_name,
+                site_id=test_site_id,
+                site_name=test_site_name,
                 contributor_email=test_contributor_email,
                 processing_step=test_processing_step,
                 error_message=test_error_message,

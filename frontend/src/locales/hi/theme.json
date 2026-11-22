@@ -1,0 +1,6 @@
+{
+  "toggle": "थीम बदलें",
+  "lightMode": "उजला मोड",
+  "darkMode": "गहरा मोड",
+  "currentTheme": "वर्तमान थीम: {{theme}}"
+}

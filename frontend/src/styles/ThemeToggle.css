@@ -1,0 +1,73 @@
+/*
+  The theme toggle and the basemap picker sit in the same corner, so they are
+  the same control: same height, radius, border, shadow and ground, from the
+  tokens in `theme-variables.css`. They were built apart -- a 40px circle at
+  `fixed` 16px against a 40px-tall rounded rectangle at `absolute` 12px, each
+  with its own shadow and its own hover -- and read as two unrelated things
+  that had landed next to each other.
+
+  The square is deliberate: this one is a button and the other opens a menu, but
+  a circle beside a pill is a difference that says nothing about that.
+*/
+.theme-toggle-btn {
+  position: fixed;
+  top: var(--control-inset);
+  right: var(--control-inset);
+  z-index: 1000;
+
+  width: var(--control-size);
+  height: var(--control-size);
+  /*
+    `padding: 0`, because the global `button` rule in index.css sets
+    `0.6em 1.2em` and content-box padding wins over a declared width: this
+    rendered 50px wide against its neighbours' 44, which collapsed the 8px
+    corner gap to 2px. The declared size only holds once the padding is gone.
+  */
+  padding: 0;
+  border-radius: var(--control-radius);
+
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+
+  color: var(--text-primary);
+  font-size: 20px;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  box-shadow: var(--control-shadow);
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.theme-toggle-btn .material-icons {
+  font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .theme-toggle-btn {
+    top: var(--mobile-top-row-top, 12px);
+    right: var(--mobile-edge-padding, 12px);
+    z-index: 1310;
+  }
+
+  .theme-toggle-btn .material-icons {
+    font-size: var(--mobile-icon-size, 22px);
+  }
+}
+
+@media (max-width: 480px) {
+  .theme-toggle-btn {
+    top: var(--mobile-top-row-top, 10px);
+    right: var(--mobile-edge-padding, 10px);
+  }
+
+  .theme-toggle-btn .material-icons {
+    font-size: var(--mobile-icon-size, 22px);
+  }
+}
